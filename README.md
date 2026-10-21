@@ -115,6 +115,29 @@ unchanged:
 Image URLs live in `photos.json`, keyed by photo `name`, because Google's
 `Photo` message has no URL field — mixing them in would break the shape.
 
+### Parsing is verified, not assumed
+
+Shape claims are cheap, so the repo parses its own output with Google's actual
+messages (`google.maps.places_v1`, the same generated protobufs their Python
+client uses):
+
+```console
+$ python3 -m pip install google-maps-places      # optional, only for checking
+$ wikicrawl verify --file places.json --photo-index photos.json
+parsed 45/45 places with google.maps.places_v1
+envelope: SearchTextResponse + SearchNearbyResponse
+OK
+```
+
+`export --format google --verify` runs the same check at write time and exits 1
+on any rejection. CI runs it on every push, with the dependency installed, so
+the guarantee can't rot.
+
+One caveat that parsing does **not** cover: Google's parser accepts our ids
+because `id` is just a string, but Google's servers will not resolve
+`wc:enwiki:553500` or our photo resource names. Only `google_place_id` — filled
+by `google-match` — is resolvable at Google.
+
 Linking to Google itself is one command, and `--dry-run` shows the searches
 before spending quota:
 
@@ -230,7 +253,8 @@ Run one crawl at a time per project. If you need bulk image downloads, use the [
 ## Development
 
 ```console
-$ make test     # 58 offline tests, no network
+$ make test     # 73 offline tests, no network
+$ make verify-google   # parse the fixture with Google's protobufs
 $ make lint     # ruff, if installed
 ```
 

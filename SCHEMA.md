@@ -147,6 +147,36 @@ $ wikicrawl export --db rome.sqlite --format photo-index --out photos.json
 `photos.json` maps each photo `name` to `{url, description_url, license, author,
 width_px, height_px}`.
 
+## Parsing guarantee
+
+Two different claims live here, and they must not be confused:
+
+| Claim | Status |
+| --- | --- |
+| Google's protobuf parser accepts the payload | **verified**, in CI |
+| Google's servers resolve the ids in it | **false** for `wc:` ids; true only for `google_place_id` |
+
+Verification uses `google.maps.places_v1` — Google's generated messages, via
+their Python client:
+
+```console
+$ wikicrawl verify --file places.json
+parsed 45/45 places with google.maps.places_v1
+envelope: SearchTextResponse + SearchNearbyResponse
+OK
+```
+
+Implementation notes worth knowing if you write your own check:
+
+- `Place.pb()` returns the generated **class**, not an instance. Passing it to
+  `json_format.ParseDict` produces baffling errors (`Unknown field … DESCRIPTOR`,
+  `ClearField … doesn't apply to a 'str' object`) that look like payload bugs
+  but are harness bugs. Instantiate first: `json_format.ParseDict(data, Place.pb()())`.
+- Validate the envelope against *both* `SearchTextResponse` and
+  `SearchNearbyResponse`; they are distinct messages that share this shape.
+- The check is optional at runtime (`pip install google-maps-places`), so the
+  crawler keeps working on a bare standard-library install.
+
 ## Deliberately absent
 
 - **No addresses from Wikimedia.** Wikipedia rarely carries structured addresses,

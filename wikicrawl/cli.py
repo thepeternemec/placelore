@@ -29,6 +29,7 @@ from .schema import (
     rebuild_schema,
 )
 from .store import Store
+from .verify import MissingDependency, format_report, verify_files
 
 
 def _build_parser():
@@ -85,6 +86,11 @@ def _build_parser():
     export = sub.add_parser("export", parents=[common], help="write pages to a file")
     export.add_argument("--out", default="pages.jsonl")
     export.add_argument(
+        "--verify",
+        action="store_true",
+        help="parse the result with Google's protobuf messages (needs google-maps-places)",
+    )
+    export.add_argument(
         "--format",
         choices=("jsonl", "csv", "google", "photo-index"),
         default="jsonl",
@@ -130,6 +136,13 @@ def _build_parser():
     near.add_argument("--lon", type=float, required=True)
     near.add_argument("--radius-km", type=float, default=1.0)
     near.add_argument("--limit", type=int, default=20)
+
+    verify = sub.add_parser(
+        "verify", parents=[common], help="parse an export with Google's protobuf messages"
+    )
+    verify.add_argument("--file", required=True, help="places payload written by export")
+    verify.add_argument("--photo-index", help="optional photo index to cross-check")
+    verify.add_argument("--quiet-ok", action="store_true", help="print nothing on success")
 
     sub.add_parser("stats", parents=[common], help="summarise the database")
     return parser
@@ -240,6 +253,8 @@ def cmd_export(args):
     with Store(args.db) as store:
         if args.format == "google":
             _export_google(store.conn, args.out)
+            if args.verify:
+                _verify_or_fail(args.out)
         elif args.format == "photo-index":
             rows = store.conn.execute("SELECT * FROM place_photos ORDER BY id").fetchall()
             index = photo_index([dict(r) for r in rows])
@@ -249,6 +264,20 @@ def cmd_export(args):
         else:
             (store.export_jsonl if args.format == "jsonl" else store.export_csv)(args.out)
             _log(args, "wrote %d pages to %s" % (store.count(), args.out))
+
+
+def _verify_or_fail(payload_path, index_path=None):
+    """Run Google's parser over what was just written; exit 1 if it objects."""
+    if index_path and not os.path.exists(index_path):
+        index_path = None
+    try:
+        result = verify_files(payload_path, index_path)
+    except MissingDependency as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
+    print(format_report(result), file=sys.stderr)
+    if result["problems"]:
+        raise SystemExit(1)
 
 
 def _export_google(conn, out):
@@ -271,6 +300,16 @@ def cmd_near(args):
             print("%7.3f km  %-45s %s" % (row["distance_km"], row["title"][:45], row["url"]))
 
 
+def cmd_verify(args):
+    try:
+        result = verify_files(args.file, args.photo_index)
+    except MissingDependency as exc:
+        sys.exit(str(exc))
+    if result["problems"] or not args.quiet_ok:
+        print(format_report(result))
+    return 1 if result["problems"] else 0
+
+
 def cmd_stats(args):
     with Store(args.db) as store:
         stats = store.stats()
@@ -290,6 +329,7 @@ def main(argv=None):
         "google-match": cmd_google_match,
         "export": cmd_export,
         "near": cmd_near,
+        "verify": cmd_verify,
         "stats": cmd_stats,
     }
     return handlers[args.command](args)

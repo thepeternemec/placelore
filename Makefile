@@ -1,7 +1,11 @@
-.PHONY: test lint demo clean
+.PHONY: test lint demo clean verify-google
 
 test:
 	python3 -m unittest discover -s tests -t . -v
+
+verify-google:
+	python3 -m wikicrawl verify --file tests/fixtures/google-payload.json \
+		--photo-index tests/fixtures/google-photo-index.json
 
 lint:
 	ruff check .

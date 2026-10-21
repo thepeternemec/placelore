@@ -1,0 +1,48 @@
+{
+ "places": [
+  {
+   "id": "wc:enwiki:1",
+   "types": [
+    "historical_landmark",
+    "tourist_attraction"
+   ],
+   "displayName": {
+    "text": "Test Monument",
+    "languageCode": "en"
+   },
+   "location": {
+    "latitude": 41.8902,
+    "longitude": 12.4922
+   },
+   "primaryType": "historical_landmark",
+   "photos": [
+    {
+     "name": "places/wc:enwiki:1/photos/commons-test-monument",
+     "widthPx": 1200,
+     "heightPx": 800,
+     "authorAttributions": [
+      {
+       "displayName": "Example Author",
+       "uri": "https://commons.wikimedia.org/wiki/User:Example"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wc:enwiki:2",
+   "types": [
+    "church"
+   ],
+   "displayName": {
+    "text": "Test Church",
+    "languageCode": "en"
+   },
+   "location": {
+    "latitude": 41.8903,
+    "longitude": 12.4923
+   },
+   "primaryType": "church"
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+{
+ "places/wc:enwiki:1/photos/commons-test-monument": {
+  "url": "https://upload.wikimedia.org/example.jpg",
+  "license": "CC BY-SA 4.0",
+  "author": "Example Author",
+  "width_px": 1200,
+  "height_px": 800
+ }
+}

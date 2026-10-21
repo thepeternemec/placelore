@@ -25,6 +25,26 @@ jobs:
       - name: Byte-compile
         run: python -m compileall -q wikicrawl
 
+  google-compat:
+    # The claim is "Google's parser accepts this". Here Google's parser proves it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install google-maps-places
+      - name: Parse fixture with google.maps.places_v1
+        run: |
+          python -m wikicrawl verify \
+            --file tests/fixtures/google-payload.json \
+            --photo-index tests/fixtures/google-photo-index.json
+      - name: Verify tests (not skipped here)
+        run: python -m unittest tests.test_verify -v
+
   lint:
     runs-on: ubuntu-latest
     steps:
