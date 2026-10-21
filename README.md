@@ -3,280 +3,220 @@
 [![ci](https://github.com/thepeternemec/wikipedia-crawl/actions/workflows/ci.yml/badge.svg)](https://github.com/thepeternemec/wikipedia-crawl/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A small, polite, resumable crawler for **Wikipedia places, their coordinates, and their photos** — one SQLite file, zero dependencies, Python 3.9+.
+An open dataset of historical places — coordinates, descriptions and photographs — built from Wikimedia, keyed to Google place IDs, and stored in one SQLite file you own.
 
-Wikipedia's API is easy to call and surprisingly easy to get wrong: result lists truncate silently, some parameters are illegal in combination, and rate limits arrive as `maxlag` errors rather than HTTP failures. This project encodes those rules so a crawl is complete, restartable, and doesn't get you blocked.
+The point is to stop paying per request for facts the world already contributed for free.
 
-```console
-$ wikicrawl collect --category "Category:Colosseum" --depth 1 --db rome.sqlite
-$ wikicrawl photos --db rome.sqlite
-$ wikicrawl stats --db rome.sqlite
-pages        12
-with coords  6
-with image   6
-with infobox 12
-photos       6
-```
+## The problem
 
-## Why this exists
+Places data is metered twice.
 
-Harvesting "all historical places" means joining three Wikimedia surfaces:
+**It costs money per lookup.** Nearby Search, Text Search and Place Details are each billed per request. Serving a map of 2.2 million heritage sites — address, photo, rating — means millions of billable calls, repeated forever, because you cannot keep what you fetched.
 
-| Surface | What it gives you | Trap |
-| --- | --- | --- |
-| Wikipedia | Articles, coordinates, infobox fields | `prop=extracts` accepts only 20 titles per request; `rvlimit` is illegal with multiple titles |
-| Commons | Upload URLs, pixel sizes, licences, authors | `geosearch` caps at 500 results with **no continuation token** |
-| Wikidata | Stable place IDs, heritage designation | Optional in v0.1, see roadmap |
+**It costs you the data.** Google's terms forbid pre-fetching, caching or storing Places content beyond narrow exceptions, with one exemption: `place_id` may be stored indefinitely. So the more you build on it, the less of it you own.
 
-A crawler that ignores the first and third traps silently returns partial data — which is worse than failing, because you won't notice.
+## The idea
 
-## Install
+Split the problem along that line.
 
-No dependencies. From a checkout:
+| Layer | Source | Licence / terms | What it gives |
+|---|---|---|---|
+| The facts | Wikipedia + Wikidata | CC BY-SA 4.0 | names, coordinates, descriptions, heritage status |
+| The photos | Wikimedia Commons | CC BY-SA / CC0 / public domain, per file | real photographs with author and licence attached |
+| The identity | Google Places | `place_id` storable indefinitely | a durable join key to the commercial world |
+
+Wikimedia supplies the content; Google supplies only a key. One bulk pass on your own machine produces a database you can query, join and redistribute without a meter running.
+
+That is the whole thesis: **the expensive part of a places dataset is not the places, it's the per-request business model.** Coordinates and photographs are already contributed, reviewed and licensed by volunteers.
+
+Being open is a design requirement, not a slogan: the content needs no API key, the build is reproducible from a checkout, and the only piece that depends on Google — the identifier — is one you can store forever and share. Anyone can fork the database, host it, or rebuild it from scratch.
+
+### What this is not
+
+Honest boundaries, because a dataset that oversells itself is worse than none:
+
+- **Not a Places API replacement where Google's own data matters** — opening hours, phone numbers, ratings, live business status and structured street addresses do not exist in Wikimedia and are not invented here.
+- **Not Google photos.** Every image is a Commons file with its own licence and author; nothing is fetched from Google.
+- **Not a free pass on terms.** Storing `place_id` is permitted; storing the rest of a Places response is not. The schema enforces that distinction instead of ignoring it.
+
+## What you get
+
+- **Three crawl strategies** — category trees, link graphs, and geo grids that survive the API's 500-result cap.
+- **One SQLite file** with provenance and product layers kept separate.
+- **Stable ids** — `wc:Q10285` where Wikidata knows the place, `wc:enwiki:27119` otherwise.
+- **A Google-shaped payload** that parses with Google's own protobuf messages, verified in CI.
+- **An explicit link chain** — wiki place → Google id → photos, with method, confidence and evidence per link.
+- **No dependencies** beyond the Python standard library.
+
+## Quickstart
 
 ```console
 $ git clone https://github.com/thepeternemec/wikipedia-crawl
 $ cd wikipedia-crawl
-$ python3 -m wikicrawl --help
+$ python3 -m wikicrawl collect --lat 41.8902 --lon 12.4922 --radius 500 --cell 100 --db rome.sqlite
+$ python3 -m wikicrawl photos  --db rome.sqlite
+$ python3 -m wikicrawl normalize --db rome.sqlite
+$ python3 -m wikicrawl export --db rome.sqlite --format google --out places.json
 ```
 
-Or install the `wikicrawl` command:
+`python3 -m wikicrawl` needs nothing but the standard library. Installing the `wikicrawl` command instead:
 
 ```console
 $ python3 -m pip install -e .
-$ wikicrawl --help
 ```
 
-Installing needs `pip >= 22` / `setuptools >= 61` (i.e. PEP 621 metadata support). On an older toolchain — macOS's bundled Python ships setuptools 58 — use `python3 -m wikicrawl` from the checkout instead; it needs nothing but the standard library.
+Installing needs `pip >= 22` / `setuptools >= 61` (PEP 621 metadata). On an older toolchain — macOS's bundled Python ships setuptools 58 — use the module form above.
 
-Set a real contact in your user agent — Wikimedia's policy requires it, and it is the difference between being throttled and being blocked:
+Set a real contact in your user agent; Wikimedia's policy requires it:
 
 ```console
-$ wikicrawl collect --category "Category:Colosseum" \
+$ python3 -m wikicrawl collect --category "Category:Colosseum" \
     --user-agent "my-project/0.1 (https://github.com/you/my-project; you@example.org)"
 ```
 
 ## Three ways to crawl
 
-**By category tree.** Walks `categorymembers`, following subcategories up to `--depth` hops. Cycles are handled.
+**By category tree** — walks `categorymembers`, following subcategories up to `--depth`, cycle-safe.
 
 ```console
-$ wikicrawl collect --category "Category:Cultural heritage monuments in Slovenia" \
+$ python3 -m wikicrawl collect --category "Category:Cultural heritage monuments in Slovenia" \
     --depth 2 --limit 500 --db slovenia.sqlite
 ```
 
-**By geography.** Overlays a grid of cells and queries each one, so the 500-result cap cannot truncate a dense city centre. Reports any cell that still hit the cap.
+**By geography** — overlays a grid so the 500-result cap cannot truncate a dense centre, and says so when a cell still hits it.
 
 ```console
-$ wikicrawl collect --lat 41.8902 --lon 12.4922 --radius 400 --cell 100 --db rome.sqlite
+$ python3 -m wikicrawl collect --lat 41.8902 --lon 12.4922 --radius 400 --cell 100 --db rome.sqlite
 geo: 87 pages in 45 cells @100m
 ```
 
-Shrink `--cell` (60–100 m works for dense historic centres) until the warning disappears. The grid prints `[WARNING: N cells hit the 500 cap ...]` when coverage is incomplete.
-
-**By link graph.** Breadth-first over internal links from seed articles.
+**By link graph** — breadth-first from seed articles.
 
 ```console
-$ wikicrawl collect --seed "Colosseum" --depth 1 --limit 200 --db rome.sqlite
+$ python3 -m wikicrawl collect --seed "Colosseum" --depth 1 --limit 200 --db rome.sqlite
 ```
 
-## Clean, Google-shaped output
+## The two layers
 
-After crawling, `normalize` builds the product layer: one row per place with
-Places API (New) field names, stable ids, and photos that keep their licence and
-attribution. The crawl tables stay behind as provenance.
+```sql
+-- product: Google-shaped
+places(id PK, name, lat, lng, types, primary_type, formatted_address,
+       google_place_id, google_fetched_at, wikidata_id, ...)
+place_photos(place_id, id, name, url, width_px, height_px,
+             author_name, author_uri, license, PRIMARY KEY(place_id, id))
+place_links(place_id, google_place_id, is_primary, method, confidence,
+            evidence, verified, PRIMARY KEY(place_id, google_place_id))
+
+-- provenance: what the wiki said
+pages(pageid PK, title, url, lat, lon, extract, summary, infobox, image)
+page_categories(pageid, category)
+photos(file PK, url, width, height, license, artist, description_url)
+```
+
+Full field mapping against the Places API (New) messages: [SCHEMA.md](SCHEMA.md).
+
+`place_links` keeps every candidate, not just the winner — a rejected match is evidence, and one place legitimately mapping to two Google records is a real case. Exactly one row per place is primary, enforced by a partial unique index; `places.google_place_id` is only a cache of it, and `link check` proves the two agree.
+
+## Linking to Google
 
 ```console
-$ wikicrawl normalize --db rome.sqlite
-places=87 photos=61 skipped=12 duplicates=3
-$ wikicrawl export --db rome.sqlite --format google --out places.json
-$ wikicrawl export --db rome.sqlite --format photo-index --out photos.json
+$ python3 -m wikicrawl google-match --db rome.sqlite --dry-run --limit 20   # no quota spent
+$ python3 -m wikicrawl google-match --db rome.sqlite --limit 20             # needs GOOGLE_MAPS_API_KEY
+$ python3 -m wikicrawl link import --db rome.sqlite --file google_ids.csv   # ids you already have
+$ python3 -m wikicrawl link check  --db rome.sqlite
+$ python3 -m wikicrawl link stats  --db rome.sqlite
+$ python3 -m wikicrawl export --db rome.sqlite --format links --out links.json
 ```
 
-`places.json` is a strict `{"places": [...]}` payload — the same envelope as
-Nearby/Text Search — so code written against the Places API can parse it
-unchanged:
+Matching is Text Search biased to a 500 m circle, scored `0.7 × name similarity + 0.3 × proximity`, accepted at ≥ 0.55. Only `google_place_id` is stored by default, because that is the only field the terms let you keep. `--store-fields` opts into caching addresses, and `v_google_stale` lists rows older than the refresh window.
 
-```json
-{"places": [{
-  "id": "wc:enwiki:553500",
-  "types": ["historical_landmark"],
-  "displayName": {"text": "Arch of Constantine", "languageCode": "en"},
-  "location": {"latitude": 41.88972, "longitude": 12.49083},
-  "primaryType": "historical_landmark",
-  "businessStatus": "OPERATIONAL",
-  "photos": [{"name": "places/wc:enwiki:553500/photos/commons-arch-of-constantine-rome-south-side",
-              "widthPx": 6272, "heightPx": 5292,
-              "authorAttributions": [{"displayName": "NikonZ7II (Paris Orlando)",
-                                      "uri": "https://commons.wikimedia.org/wiki/User:NikonZ7II"}]}]
-}]}
-```
+`links.json` is the explicit chain — wiki place id → Google place id → photos with URL, licence and author, plus an `unlinked` list so gaps are stated rather than implied.
 
-Image URLs live in `photos.json`, keyed by photo `name`, because Google's
-`Photo` message has no URL field — mixing them in would break the shape.
+## The payload parses with Google's code
 
-### Parsing is verified, not assumed
-
-Shape claims are cheap, so the repo parses its own output with Google's actual
-messages (`google.maps.places_v1`, the same generated protobufs their Python
-client uses):
+Shape claims are cheap, so the repo checks its own output with `google.maps.places_v1`, the generated messages their Python client uses:
 
 ```console
-$ python3 -m pip install google-maps-places      # optional, only for checking
-$ wikicrawl verify --file places.json --photo-index photos.json
+$ python3 -m pip install google-maps-places     # optional, only for checking
+$ python3 -m wikicrawl verify --file places.json --photo-index photos.json
 parsed 45/45 places with google.maps.places_v1
 envelope: SearchTextResponse + SearchNearbyResponse
 OK
 ```
 
-`export --format google --verify` runs the same check at write time and exits 1
-on any rejection. CI runs it on every push, with the dependency installed, so
-the guarantee can't rot.
+`export --format google --verify` runs the same check at write time and exits 1 on rejection. CI runs it on every push, so the guarantee cannot rot.
 
-One caveat that parsing does **not** cover: Google's parser accepts our ids
-because `id` is just a string, but Google's servers will not resolve
-`wc:enwiki:553500` or our photo resource names. Only `google_place_id` — filled
-by `google-match` — is resolvable at Google.
+Parsing is not resolution: Google's parser accepts our ids because `id` is a string, but Google's servers will not resolve `wc:enwiki:553500`. Only `google_place_id` — filled by `google-match` — is resolvable at Google.
 
-### Linking a Google id to each place
+## Dataset size, measured
 
-`place_links` records every candidate — not only the winner — with method,
-confidence and evidence, and one row per place is marked primary. The nullable
-column on `places` is just a cache of that primary.
+A 500 m crawl of central Rome, as shipped:
 
-```console
-$ wikicrawl link import --db rome.sqlite --file google_ids.csv   # attach ids you already have
-$ wikicrawl link stats  --db rome.sqlite                        # places / links / photos linked
-$ wikicrawl link check  --db rome.sqlite                        # cache + id integrity
-$ wikicrawl export --db rome.sqlite --format links --out links.json
-```
+| Item | Size |
+|---|---|
+| SQLite database | 348 KiB = 356,352 bytes (87 pages × 4 KiB) |
+| `places.json` | 30 KB pretty, 19 KB compact |
+| `photos.json` | 17 KB |
+| Rows | 45 places · 43 photos · 723 category links |
 
-`links.json` is the explicit chain: wiki place id → Google place id → photos
-(name, URL, licence, author), plus an `unlinked` list so coverage gaps are
-visible rather than implied.
+That is **7,919 bytes per place** (7.7 KiB): 2.5 KiB page text (extract, summary, infobox), 2.0 KiB categories (16 per page), 0.7 KiB Commons photo metadata, 0.6 KiB photo rows, 0.6 KiB place rows and indexes, 0.2 KiB bookkeeping. Wikitext is deliberately not stored.
 
-Linking through the API is one command, and `--dry-run` shows the searches
-before spending quota:
+Against the 2,210,883 coordinate-bearing heritage items in Wikidata (projections in decimal GB, as storage is billed):
 
-```console
-$ wikicrawl google-match --db rome.sqlite --dry-run --limit 20
-$ wikicrawl google-match --db rome.sqlite --limit 20 --threshold 0.6
-```
+| Places | SQLite | JSON pretty | JSON compact |
+|---|---|---|---|
+| 1,000 | 7.9 MB | 0.7 MB | 0.4 MB |
+| 100,000 | 0.8 GB | 68 MB | 43 MB |
+| 2,210,883 | 17.5 GB | 1.5 GB | 0.9 GB |
 
-Only `google_place_id` is stored by default, because Google's terms permit
-storing place IDs indefinitely but not other Place content. `--store-fields`
-opts into caching addresses too, and `v_google_stale` then lists what has aged
-past the refresh window. See [SCHEMA.md](SCHEMA.md) for the full mapping.
+Storage is not the constraint:
 
-## Enrich and export
-
-```console
-$ wikicrawl photos --db rome.sqlite          # Commons imageinfo: URL, size, licence, author
-$ wikicrawl export --db rome.sqlite --out places.jsonl
-$ wikicrawl export --db rome.sqlite --out places.csv --format csv
-$ wikicrawl near --db rome.sqlite --lat 41.8902 --lon 12.4922 --radius-km 1
-  0.011 km  Colosseum                             https://en.wikipedia.org/wiki/Colosseum
-  0.148 km  Colosseo (Rome Metro)                 https://en.wikipedia.org/wiki/Colosseo_(Rome_Metro)
-```
-
-An exported record:
-
-```json
-{
-  "pageid": 27119,
-  "title": "Colosseum",
-  "url": "https://en.wikipedia.org/wiki/Colosseum",
-  "lat": 41.8902,
-  "lon": 12.4922,
-  "summary": "The Colosseum is an elliptical amphitheatre in the centre of the city of Rome, Italy.",
-  "infobox": {"built": "80 AD", "height": "48 m"},
-  "categories": ["Category:Colosseum", "Category:Ancient Roman amphitheatres"],
-  "photo": {
-    "url": "https://upload.wikimedia.org/wikipedia/commons/d/de/Colosseo_2020.jpg",
-    "width": 6000,
-    "height": 4000,
-    "license": "CC BY-SA 4.0",
-    "artist": "Example Photographer",
-    "page": "https://commons.wikimedia.org/wiki/File:Colosseo_2020.jpg"
-  }
-}
-```
-
-## Resumable by design
-
-Every visited title is recorded in the `visited` table and page records upsert on `pageid`. Re-running the same command continues where it stopped:
-
-```console
-$ wikicrawl collect --category "Category:Colosseum" --depth 3 --db rome.sqlite
-$ # interrupted with Ctrl-C
-$ wikicrawl collect --category "Category:Colosseum" --depth 3 --db rome.sqlite
-```
-
-Use `--force` to re-fetch pages that were already visited (for example after a parser fix).
-
-## Data model
-
-Two layers: provenance, and product.
-
-```sql
--- product (Google Places shape)
-places(id PK, name, display_name, lat, lng, types JSON, primary_type,
-       formatted_address, website_uri, rating, google_place_id UNIQUE,
-       google_fetched_at, match_confidence, wikidata_id, source, ...)
-place_photos(id PK, place_id, name, url, width_px, height_px, author_name,
-             author_uri, license, position)
-
--- provenance (what the wiki said)
-pages(pageid PK, title UNIQUE, url, lat, lon, image, infobox JSON, fetched_at)
-page_categories(pageid, category)
-photos(file PK, url, width, height, license, artist, description_url)
-visited(title PK, source, visited_at)
-
--- audit
-google_matches(place_id, google_place_id, score, method, query, matched_at)
-```
-
-`lat`/`lon` come from `prop=coordinates`, so they are the article's *primary* coordinate, not a regex over wikitext. File names are normalised (underscores → spaces, first letter case) before joining `pages.image` to `photos.file`, because pageimages and Commons disagree often enough to break naive joins.
+1. **Images dominate.** URLs cost nothing; 2.2 M originals at 1.5–3 MB are 3–6 TB, before thumbnails.
+2. **~40% of the database is avoidable.** Categories and the duplicated extract/summary pair can go for a production build, landing near 5 KiB/place (~11 GB).
+3. **Discovery is the real cost.** Enrichment is arithmetic: 20 titles per request → 110,544 requests, ~6 h minimum at 0.2 s each; Commons photos add ~44 k. But a 100 m geo grid cannot cover the world — the workable route is a place list from Wikidata/QLever plus the `geo_tags` dump (768 MB) for the Commons side, with the grid reserved for gap-filling.
 
 ## Politeness
 
-* Default 0.2 s between requests (`--min-interval`), per client.
-* `maxlag=5` on every request, with exponential backoff when the server complains.
+* 0.2 s between requests by default (`--min-interval`), per client.
+* `maxlag=5` on every request, exponential backoff when the server objects.
 * `Retry-After` honoured on 429/503.
-* Category, link and extract requests page through `continue` tokens rather than assuming one page.
-* Requests go to `action=query` only — no HTML scraping.
+* Category, link and extract listings page through `continue` tokens instead of assuming one page.
+* `action=query` only — no HTML scraping.
 
-Run one crawl at a time per project. If you need bulk image downloads, use the [Wikimedia dumps](https://dumps.wikimedia.org/) instead of the API; the Commons `geo_tags` table and `page` table are the supported route for worldwide coverage.
+For bulk image downloads use the [Wikimedia dumps](https://dumps.wikimedia.org/), not the API.
 
-## Limits and known gaps
+## Limits
 
 * **English Wikipedia by default.** Point `--api-url` at another wiki for other languages.
-* **Grid coverage is bounded by the cell size**, not guaranteed. The crawler tells you when a cell capped; it cannot recover rows the API already dropped.
-* **Coordinates are the article's, not the subject's bounding box.** Large sites collapse to one point.
-* **Infobox parsing is heuristic.** Nested templates and `{{convert}}` are handled; exotic templates are not.
-* **No Wikidata or Commons-category crawling yet** (see roadmap). Heritage filtering (`P1435`), Wiki Loves Monuments IDs and per-monument category photo sets are the next step.
-* **Google matching is heuristic.** Name similarity plus distance links most famous places; ambiguous names in dense old towns need a higher `--threshold` and manual review via `google_matches`.
-* **No API key is shipped, and none is needed** for crawling. `google-match` is the only command that spends Google quota.
+* **Grid coverage is bounded by cell size.** The crawler reports cells that capped; it cannot recover rows the API already dropped.
+* **One coordinate per place**, so large sites collapse to a point.
+* **Infobox parsing is heuristic.** Nested templates and `{{convert}}` are handled; exotic ones are not.
+* **Matching is heuristic.** Famous places link cleanly; dense old towns with near-identical names want `--threshold 0.7` and a look at `google_matches`.
+* **No Wikidata heritage filter yet** (roadmap): "historical" currently means "article has a coordinate", not "is a listed monument".
 
 ## Roadmap
 
 - [x] Google Places (New) compatible clean layer, matching and export
-- [ ] `--wikidata`: attach QID, heritage designation, Commons category per page
+- [x] Verified parsing with Google's own protobuf messages
+- [x] First-class wiki place ↔ Google id ↔ photo links
+- [ ] `--wikidata`: attach QID, heritage designation (`P1435`), Commons category per page
 - [ ] `--commons-category`: crawl a monument's curated Commons category instead of geosearch
-- [ ] `--bbox`: rectangular region sweeps with automatic cell subdivision
-- [ ] Incremental mode using `revisions` timestamps
+- [ ] `--bbox`: rectangular sweeps with automatic cell subdivision
+- [ ] Bulk mode: build the place list from Wikidata/QLever, enrich by title
 - [ ] Parquet export
 
 ## Development
 
 ```console
-$ make test     # 89 offline tests, no network
+$ make test            # 92 tests, no network (6 need the optional Google client)
 $ make verify-google   # parse the fixture with Google's protobufs
-$ make lint     # ruff, if installed
+$ make lint            # ruff, if installed
 ```
 
-Tests use a scripted transport, so retries, continuation and the 500-cap logic are all exercised without touching the network.
+Tests use a scripted transport, so retries, continuation and the 500-cap logic are exercised without touching the network.
 
-## License
+## Licence
 
-Code: MIT. Crawled text: CC BY-SA 4.0 via Wikipedia. Images: each file's own licence (commonly CC BY-SA or public domain) — you must keep the attribution string in `photo.artist` and link `photo.page` when you republish.
+Code: MIT. Crawled text: CC BY-SA 4.0 via Wikipedia. Photographs: each file's own licence — keep the attribution in `photo.artist` and link `photo.page` when you republish. Google place IDs are stored under Google's terms, which permit indefinite storage of that field; everything else Google-sourced is time-limited and labelled as such.
+
+If you build on this dataset, the honest attribution is: content by Wikimedia contributors, place identifiers by Google, schema by this project.
