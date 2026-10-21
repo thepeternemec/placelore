@@ -269,6 +269,19 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM places").fetchone()[0], 1)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM place_photos").fetchone()[0], 1)
 
+    def test_shared_photo_stays_attached_to_both_places(self):
+        self.conn.execute(
+            """INSERT INTO pages (pageid, title, url, lat, lon, image, infobox)
+               VALUES (2, 'Second place', 'https://en.wikipedia.org/wiki/Second_place',
+                       41.8903, 12.4923, 'Colosseo.jpg', '{}')"""
+        )
+        self.conn.commit()
+        summary = normalize(self.conn)
+        self.assertEqual(summary["places"], 2)
+        rows = self.conn.execute("SELECT place_id FROM place_photos ORDER BY place_id").fetchall()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({r["place_id"] for r in rows}, {"wc:enwiki:1", "wc:enwiki:2"})
+
     def test_clean_author_strips_html(self):
         name, uri = clean_author('<a href="https://x/u"> A &amp; B </a>')
         self.assertEqual(name, "A & B")

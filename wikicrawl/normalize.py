@@ -154,8 +154,8 @@ def normalize(conn, dedupe=True, drop_missing_coords=True):
                                           author_name, author_uri, license,
                                           html_attributions, position, created_at)
                 VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    place_id=excluded.place_id, url=excluded.url,
+                ON CONFLICT(place_id, id) DO UPDATE SET
+                    url=excluded.url,
                     width_px=excluded.width_px, height_px=excluded.height_px,
                     author_name=excluded.author_name, author_uri=excluded.author_uri,
                     license=excluded.license

@@ -21,7 +21,13 @@ from .google import PlacesClient, match_places
 from .images import COMMONS_API, fetch_imageinfo
 from .normalize import normalize
 from .pages import fetch_pages
-from .schema import ensure_schema, photo_index, place_to_google, places_response
+from .schema import (
+    ensure_schema,
+    photo_index,
+    place_to_google,
+    places_response,
+    rebuild_schema,
+)
 from .store import Store
 
 
@@ -90,6 +96,9 @@ def _build_parser():
     )
     norm.add_argument(
         "--no-dedupe", action="store_true", help="keep places sharing a name and a ~10 m cell"
+    )
+    norm.add_argument(
+        "--rebuild", action="store_true", help="drop and recreate the clean layer first"
     )
 
     match = sub.add_parser("google-match", parents=[common], help="link places to Google place ids")
@@ -195,7 +204,10 @@ def cmd_photos(args):
 
 def cmd_normalize(args):
     with Store(args.db) as store:
-        ensure_schema(store.conn)
+        if args.rebuild:
+            rebuild_schema(store.conn)
+        else:
+            ensure_schema(store.conn)
         summary = normalize(store.conn, dedupe=not args.no_dedupe)
         _log(
             args,

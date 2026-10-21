@@ -149,7 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_places_geo ON places (lat, lng);
 CREATE INDEX IF NOT EXISTS idx_places_qid ON places (wikidata_id);
 
 CREATE TABLE IF NOT EXISTS place_photos (
-    id              TEXT PRIMARY KEY,          -- commons:File:...
+    id              TEXT NOT NULL,             -- commons:File:...
     place_id        TEXT NOT NULL REFERENCES places(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,             -- resource name: places/{id}/photos/{slug}
     google_photo_reference TEXT,               -- set only after a Google match
@@ -162,7 +162,8 @@ CREATE TABLE IF NOT EXISTS place_photos (
     license         TEXT,
     html_attributions TEXT,                    -- JSON array
     position        INTEGER DEFAULT 0,
-    created_at      REAL
+    created_at      REAL,
+    PRIMARY KEY (place_id, id)   -- the same photo may illustrate several places
 );
 CREATE INDEX IF NOT EXISTS idx_photos_place ON place_photos (place_id, position);
 
@@ -188,9 +189,23 @@ WHERE google_place_id IS NOT NULL
 """
 
 
+DROP_DDL = """
+DROP VIEW IF EXISTS v_google_stale;
+DROP TABLE IF EXISTS place_photos;
+DROP TABLE IF EXISTS google_matches;
+DROP TABLE IF EXISTS places;
+"""
+
+
 def ensure_schema(conn):
     """Create the clean layer if it is not there yet."""
     conn.executescript(PLACES_DDL)
+
+
+def rebuild_schema(conn):
+    """Drop and recreate the clean layer, keeping crawl provenance intact."""
+    conn.executescript(DROP_DDL)
+    ensure_schema(conn)
 
 
 def slugify(text, limit=60):
