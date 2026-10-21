@@ -201,7 +201,9 @@ WHERE google_place_id IS NOT NULL
 
 
 DROP_DDL = """
+DROP VIEW IF EXISTS v_places_google;
 DROP VIEW IF EXISTS v_google_stale;
+DROP TABLE IF EXISTS place_links;
 DROP TABLE IF EXISTS place_photos;
 DROP TABLE IF EXISTS google_matches;
 DROP TABLE IF EXISTS places;
@@ -210,7 +212,10 @@ DROP TABLE IF EXISTS places;
 
 def ensure_schema(conn):
     """Create the clean layer if it is not there yet."""
+    from .links import LINKS_DDL  # local import: links depends on this module's table
+
     conn.executescript(PLACES_DDL)
+    conn.executescript(LINKS_DDL)
 
 
 def rebuild_schema(conn):

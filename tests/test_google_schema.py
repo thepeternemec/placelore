@@ -463,7 +463,7 @@ class TestMatchPlaces(unittest.TestCase):
             {
                 "places": [
                     {
-                        "id": "ChIJwrong",
+                        "id": "ChIJwrongCandidate0000000000000",
                         "displayName": {"text": "Pizzeria da Mario"},
                         "location": {"latitude": 41.8903, "longitude": 12.4923},
                     }
@@ -480,7 +480,7 @@ class TestMatchPlaces(unittest.TestCase):
             {
                 "places": [
                     {
-                        "id": "ChIJx",
+                        "id": "ChIJxTestPlaceId00000000000000",
                         "displayName": {"text": "Colosseum"},
                         "formattedAddress": "Piazza del Colosseo, Roma",
                         "location": {"latitude": 41.8903, "longitude": 12.4923},
@@ -497,7 +497,7 @@ class TestMatchPlaces(unittest.TestCase):
             {
                 "places": [
                     {
-                        "id": "ChIJx",
+                        "id": "ChIJxTestPlaceId00000000000000",
                         "displayName": {"text": "Colosseum"},
                         "formattedAddress": "Piazza del Colosseo, Roma",
                         "location": {"latitude": 41.8903, "longitude": 12.4923},

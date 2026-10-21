@@ -9,6 +9,7 @@ wikicrawl near --db rome.sqlite --lat 41.89 --lon 12.49 --radius-km 1
 from __future__ import annotations
 
 import argparse
+import csv
 import itertools
 import json
 import os
@@ -19,6 +20,14 @@ from .api import DEFAULT_UA, MediaWiki
 from .crawl import crawl_category, crawl_links, geosearch
 from .google import PlacesClient, match_places
 from .images import COMMONS_API, fetch_imageinfo
+from .links import (
+    check_integrity,
+    export_links,
+    import_links,
+    link_report,
+    set_primary,
+    validate_google_id,
+)
 from .normalize import normalize
 from .pages import fetch_pages
 from .schema import (
@@ -86,13 +95,20 @@ def _build_parser():
     export = sub.add_parser("export", parents=[common], help="write pages to a file")
     export.add_argument("--out", default="pages.jsonl")
     export.add_argument(
+        "--linked-only",
+        action="store_false",
+        dest="include_unlinked",
+        default=True,
+        help="for --format links: omit places with no google id",
+    )
+    export.add_argument(
         "--verify",
         action="store_true",
         help="parse the result with Google's protobuf messages (needs google-maps-places)",
     )
     export.add_argument(
         "--format",
-        choices=("jsonl", "csv", "google", "photo-index"),
+        choices=("jsonl", "csv", "google", "photo-index", "links"),
         default="jsonl",
         help="google = strict Places API (New) payload",
     )
@@ -136,6 +152,22 @@ def _build_parser():
     near.add_argument("--lon", type=float, required=True)
     near.add_argument("--radius-km", type=float, default=1.0)
     near.add_argument("--limit", type=int, default=20)
+
+    link = sub.add_parser("link", parents=[common], help="manage wiki place <-> google id links")
+    link.add_argument("action", choices=("import", "export", "check", "stats", "promote"))
+    link.add_argument("--file", help="CSV or JSON rows for import")
+    link.add_argument("--out", help="destination for export")
+    link.add_argument("--method", default="import", help="provenance label for imported links")
+    link.add_argument("--dry-run", action="store_true")
+    link.add_argument("--place", help="wiki place id for promote")
+    link.add_argument("--google-id", help="google place id for promote")
+    link.add_argument(
+        "--linked-only",
+        action="store_false",
+        dest="include_unlinked",
+        default=True,
+        help="omit places with no google id from the export",
+    )
 
     verify = sub.add_parser(
         "verify", parents=[common], help="parse an export with Google's protobuf messages"
@@ -218,6 +250,19 @@ def cmd_photos(args):
 def cmd_normalize(args):
     with Store(args.db) as store:
         if args.rebuild:
+            existing = (
+                store.conn.execute("SELECT COUNT(*) FROM place_links").fetchone()[0]
+                if store.conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='place_links'"
+                ).fetchone()
+                else 0
+            )
+            if existing:
+                _log(
+                    args,
+                    "WARNING: --rebuild drops %d Google links; re-import or re-match after"
+                    % existing,
+                )
             rebuild_schema(store.conn)
         else:
             ensure_schema(store.conn)
@@ -255,6 +300,15 @@ def cmd_export(args):
             _export_google(store.conn, args.out)
             if args.verify:
                 _verify_or_fail(args.out)
+        elif args.format == "links":
+            payload = export_links(store.conn, include_unlinked=args.include_unlinked)
+            with open(args.out, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, ensure_ascii=False, indent=2)
+            _log(
+                args,
+                "wrote %d linked and %d unlinked places to %s"
+                % (len(payload["linked"]), len(payload.get("unlinked", [])), args.out),
+            )
         elif args.format == "photo-index":
             rows = store.conn.execute("SELECT * FROM place_photos ORDER BY id").fetchall()
             index = photo_index([dict(r) for r in rows])
@@ -300,6 +354,77 @@ def cmd_near(args):
             print("%7.3f km  %-45s %s" % (row["distance_km"], row["title"][:45], row["url"]))
 
 
+def _read_link_rows(path):
+    """Read links from CSV or JSON; returns a list of dicts."""
+    if not path:
+        raise SystemExit("--file is required for link import")
+    with open(path, encoding="utf-8") as handle:
+        if path.lower().endswith(".json"):
+            data = json.load(handle)
+            return data["links"] if isinstance(data, dict) and "links" in data else data
+        return list(csv.DictReader(handle))
+
+
+def cmd_link(args):
+    with Store(args.db) as store:
+        ensure_schema(store.conn)
+        if args.action == "import":
+            rows = _read_link_rows(args.file)
+            summary = import_links(store.conn, rows, method=args.method, dry_run=args.dry_run)
+            _log(
+                args,
+                "links: added=%(added)d skipped=%(skipped)d errors=%(errors)d"
+                % {
+                    "added": summary["added"],
+                    "skipped": summary["skipped"],
+                    "errors": len(summary["errors"]),
+                },
+            )
+            for number, message in summary["errors"][:10]:
+                print("  row %s: %s" % (number, message), file=sys.stderr)
+            return 1 if summary["errors"] else 0
+
+        if args.action == "export":
+            payload = export_links(store.conn, include_unlinked=args.include_unlinked)
+            out = args.out or "links.json"
+            with open(out, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, ensure_ascii=False, indent=2)
+            _log(
+                args,
+                "wrote %d linked, %d unlinked -> %s"
+                % (len(payload["linked"]), len(payload.get("unlinked", [])), out),
+            )
+            return 0
+
+        if args.action == "check":
+            problems = check_integrity(store.conn)
+            for severity, message in problems:
+                print("%-5s %s" % (severity.upper(), message))
+            print("OK" if not problems else "%d problem(s)" % len(problems))
+            return 1 if any(severity == "error" for severity, _ in problems) else 0
+
+        if args.action == "promote":
+            if not args.place or not args.google_id:
+                raise SystemExit("--place and --google-id are required")
+            set_primary(store.conn, args.place, validate_google_id(args.google_id))
+            store.conn.commit()
+            _log(args, "promoted %s -> %s" % (args.place, args.google_id))
+            return 0
+
+        report = link_report(store.conn)
+        for key in (
+            "places",
+            "places_linked",
+            "links",
+            "primary_links",
+            "cache_in_sync",
+            "photos",
+            "photos_linked",
+        ):
+            print("%-14s %s" % (key, report[key]))
+        return 0
+
+
 def cmd_verify(args):
     try:
         result = verify_files(args.file, args.photo_index)
@@ -329,6 +454,7 @@ def main(argv=None):
         "google-match": cmd_google_match,
         "export": cmd_export,
         "near": cmd_near,
+        "link": cmd_link,
         "verify": cmd_verify,
         "stats": cmd_stats,
     }

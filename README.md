@@ -138,7 +138,24 @@ because `id` is just a string, but Google's servers will not resolve
 `wc:enwiki:553500` or our photo resource names. Only `google_place_id` — filled
 by `google-match` — is resolvable at Google.
 
-Linking to Google itself is one command, and `--dry-run` shows the searches
+### Linking a Google id to each place
+
+`place_links` records every candidate — not only the winner — with method,
+confidence and evidence, and one row per place is marked primary. The nullable
+column on `places` is just a cache of that primary.
+
+```console
+$ wikicrawl link import --db rome.sqlite --file google_ids.csv   # attach ids you already have
+$ wikicrawl link stats  --db rome.sqlite                        # places / links / photos linked
+$ wikicrawl link check  --db rome.sqlite                        # cache + id integrity
+$ wikicrawl export --db rome.sqlite --format links --out links.json
+```
+
+`links.json` is the explicit chain: wiki place id → Google place id → photos
+(name, URL, licence, author), plus an `unlinked` list so coverage gaps are
+visible rather than implied.
+
+Linking through the API is one command, and `--dry-run` shows the searches
 before spending quota:
 
 ```console
@@ -253,7 +270,7 @@ Run one crawl at a time per project. If you need bulk image downloads, use the [
 ## Development
 
 ```console
-$ make test     # 73 offline tests, no network
+$ make test     # 89 offline tests, no network
 $ make verify-google   # parse the fixture with Google's protobufs
 $ make lint     # ruff, if installed
 ```

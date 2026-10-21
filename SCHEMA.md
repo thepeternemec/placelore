@@ -88,6 +88,61 @@ SELECT * FROM v_google_stale;
 The 30-day window is the standard Terms limit, not a magic constant of this
 code — adjust it to your contract.
 
+## The link chain: wiki place → Google id → photo
+
+One nullable column is not a link you can audit, so `place_links` is the source
+of truth and `places.google_place_id` is only a cache of the primary row:
+
+```sql
+place_links(place_id, google_place_id,
+            is_primary,          -- unique per place: one chosen link
+            method,              -- searchText | import | manual
+            confidence, evidence JSON, verified,
+            PRIMARY KEY (place_id, google_place_id))
+```
+
+Keeping every candidate — not just the winner — is deliberate: a rejected match
+is evidence, and two Google records for one place (a monument and its museum) are
+a real situation. `is_primary` is enforced by a partial unique index, and
+`check_integrity()` proves the cache still mirrors it.
+
+```console
+$ wikicrawl link import --db rome.sqlite --file google_ids.csv --method import
+links: added=41 skipped=0 errors=0
+$ wikicrawl link stats --db rome.sqlite
+places         45
+places_linked  41
+links          43
+primary_links  41
+cache_in_sync  41
+photos         43
+photos_linked  39
+$ wikicrawl link check --db rome.sqlite
+OK
+```
+
+`import` accepts CSV or JSON, matching rows by `place_id`/`wiki_place_id` or by
+`title`, so an existing Google export can be attached without spending API
+quota. Bad rows are reported per line and never abort the rest of the import.
+
+`export --format links` writes the chain the question asked for — every place,
+its Google id, and the photos that belong to it:
+
+```json
+{"linked": [{
+  "wiki_place_id": "wc:enwiki:553500",
+  "google_place_id": "ChIJ...",
+  "method": "searchText", "confidence": 0.87, "verified": false,
+  "photos": [{"id": "commons:...", "name": "places/.../photos/...",
+              "url": "https://upload.wikimedia.org/...",
+              "license": "CC BY-SA 4.0", "author_name": "..."}],
+  "photo_count": 1
+}], "unlinked": [{"wiki_place_id": "...", "name": "...", "photo_count": 0}]}
+```
+
+`--linked-only` drops the `unlinked` array. Photos stay attached to the wiki
+place, so a link promotion never orphans them.
+
 ## Matching
 
 `google-match` runs **Text Search (New)** biased to a 500 m circle, then scores

@@ -24,6 +24,8 @@ import time
 import urllib.error
 import urllib.request
 
+from .links import add_link
+
 BASE_URL = "https://places.googleapis.com/v1"
 
 DEFAULT_FIELD_MASK = ",".join(
@@ -267,14 +269,26 @@ def match_places(
             continue
 
         google_id = candidate.get("id")
-        conn.execute(
-            """
-            UPDATE places SET google_place_id=?, match_confidence=?, match_method=?,
-                              google_fetched_at=?
-            WHERE id=?
-            """,
-            (google_id, score, "searchText", stamp, place_id),
+        location = candidate.get("location") or {}
+        add_link(
+            conn,
+            place_id,
+            google_id,
+            method="searchText",
+            confidence=score,
+            evidence={
+                "query": name,
+                "candidate_name": (candidate.get("displayName") or {}).get("text", ""),
+                "distance_m": round(
+                    distance_m(
+                        lat, lng, location.get("latitude", lat), location.get("longitude", lng)
+                    ),
+                    1,
+                ),
+                "score": score,
+            },
         )
+        conn.execute("UPDATE places SET google_fetched_at=? WHERE id=?", (stamp, place_id))
         if store_fields:
             _store_google_fields(conn, place_id, candidate)
         conn.execute(
