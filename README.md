@@ -1,5 +1,8 @@
 # wikicrawl
 
+[![ci](https://github.com/thepeternemec/wikipedia-crawl/actions/workflows/ci.yml/badge.svg)](https://github.com/thepeternemec/wikipedia-crawl/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A small, polite, resumable crawler for **Wikipedia places, their coordinates, and their photos** â€” one SQLite file, zero dependencies, Python 3.9+.
 
 Wikipedia's API is easy to call and surprisingly easy to get wrong: result lists truncate silently, some parameters are illegal in combination, and rate limits arrive as `maxlag` errors rather than HTTP failures. This project encodes those rules so a crawl is complete, restartable, and doesn't get you blocked.
@@ -32,6 +35,8 @@ A crawler that ignores the first and third traps silently returns partial data â
 No dependencies. From a checkout:
 
 ```console
+$ git clone https://github.com/thepeternemec/wikipedia-crawl
+$ cd wikipedia-crawl
 $ python3 -m wikicrawl --help
 ```
 

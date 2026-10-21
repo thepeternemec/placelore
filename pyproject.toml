@@ -26,7 +26,8 @@ dev = ["ruff>=0.5"]
 wikicrawl = "wikicrawl.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/"
+Homepage = "https://github.com/thepeternemec/wikipedia-crawl"
+Issues = "https://github.com/thepeternemec/wikipedia-crawl/issues"
 
 [tool.setuptools]
 packages = ["wikicrawl"]
