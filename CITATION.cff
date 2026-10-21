@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this dataset or code, cite it as below."
+title: "wikicrawl: open historical places dataset"
+abstract: >-
+  An open dataset of historical places and landmarks: coordinates, descriptions
+  and Wikimedia Commons photographs, with stable identifiers and an optional
+  join to Google place IDs. Built to replace per-request Places API usage for
+  cultural heritage data.
+type: software
+authors:
+  - given-names: Peter
+    family-names: Nemec
+    alias: thepeternemec
+    website: "https://github.com/thepeternemec"
+repository-code: "https://github.com/thepeternemec/wikipedia-crawl"
+url: "https://github.com/thepeternemec/wikipedia-crawl"
+license: MIT
+version: 0.3.0
+date-released: 2026-10-21
+keywords:
+  - open data
+  - cultural heritage
+  - historical places
+  - wikidata
+  - wikimedia commons
+  - google places
+  - geospatial
+references:
+  - type: dataset
+    title: "Wikimedia Commons"
+    url: "https://commons.wikimedia.org"
+  - type: dataset
+    title: "Wikidata"
+    url: "https://www.wikidata.org"

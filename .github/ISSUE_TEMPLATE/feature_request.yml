@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a capability, data source, or schema change
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Scope is historical places and landmarks only (docs/SCOPE.md). Proposals
+        that widen it need an explicit scope decision — see GOVERNANCE.md.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can you not do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - crawl (Wikipedia/Commons)
+        - bulk (Wikidata)
+        - schema / export format
+        - matching / links
+        - publish / bundle
+        - docs / tooling
+    validations:
+      required: true
+  - type: textarea
+    id: licence
+    attributes:
+      label: Licensing impact
+      description: Does this add third-party data? Under what licence? Can we redistribute it?
+    validations:
+      required: true

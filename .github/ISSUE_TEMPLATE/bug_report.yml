@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in the crawler, schema, or export is wrong
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: wrong coordinates, missing photos and bad matches are
+        usually upstream data issues — see GOVERNANCE.md. Security issues go to
+        Security → Report a vulnerability, not here.
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and version
+      description: The exact command, plus `python3 -m wikicrawl --version`.
+      placeholder: |
+        python3 -m wikicrawl collect --lat 41.89 --lon 12.49 --radius 400 --cell 100 --db rome.sqlite
+        wikicrawl 0.3.0
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest reproduction
+      description: A lat/lon and radius, a category name, or a minimal database is ideal.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "macOS 15, Python 3.12, SQLite 3.51"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I ran the tests locally and they pass
+        - label: This is not a data-quality issue that belongs upstream in Wikidata/Commons
+          required: true

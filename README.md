@@ -1,11 +1,22 @@
 # wikicrawl
 
 [![ci](https://github.com/thepeternemec/wikipedia-crawl/actions/workflows/ci.yml/badge.svg)](https://github.com/thepeternemec/wikipedia-crawl/actions/workflows/ci.yml)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![google-compat](https://img.shields.io/badge/parses%20with-google.maps.places__v1-4285F4)](.github/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![data: CC BY-SA](https://img.shields.io/badge/data-CC%20BY--SA%204.0-lightgrey.svg)](DATA-LICENSE.md)
 
-An open dataset of historical places — coordinates, descriptions and photographs — built from Wikimedia, keyed to Google place IDs, and stored in one SQLite file you own.
+An open dataset of **historical places and landmarks** — coordinates,
+descriptions and photographs — built from Wikimedia, keyed to Google place IDs,
+and stored in one SQLite file you own.
 
-The point is to stop paying per request for facts the world already contributed for free.
+We like Wikipedia, and we do not think a village monument should cost money to
+display. So the place data and the photographs come from Wikimedia's open
+storage, and Google is reduced to the one thing only it can provide: a stable
+identifier.
+
+**Scope is deliberately narrow: heritage, monuments, landmarks.** No restaurants,
+no opening hours, no business directory — see [docs/SCOPE.md](docs/SCOPE.md) for
+why that line makes the data trustworthy rather than merely incomplete.
 
 ## The migration
 
@@ -16,8 +27,7 @@ the terms stop you keeping what you fetched, so you can never amortise it.
 
 This project inverts that. The place details and the photographs are migrated
 onto Wikimedia's open storage, where they already exist, were reviewed by
-volunteers, and carry licences that permit redistribution. Google is reduced to
-what it is uniquely good at: a stable identifier.
+volunteers, and carry licences that permit redistribution.
 
 | | Before | After |
 |---|---|---|
@@ -53,6 +63,20 @@ Being open is a design requirement, not a slogan: the content needs no API key,
 the build is reproducible from a checkout, and `wikicrawl publish` writes a
 bundle anyone can verify and redistribute. See
 [DATA-LICENSE.md](DATA-LICENSE.md) for the exact split of rights.
+
+## Project status
+
+| | |
+|---|---|
+| Version | **0.3.0** ([changelog](CHANGELOG.md), [roadmap](ROADMAP.md)) |
+| Maturity | working end to end; schema stable, CLI still moving |
+| Maintainers | one ([governance](GOVERNANCE.md)) — contributions welcome |
+| Tests | 117, all offline; plus a CI job that parses the output with Google's protobufs |
+| Data built so far | 45 places (Rome), 500 places / 377 photos (Slovenia, in a verified bundle) |
+
+Not production-hardened for a 2.2 M-place release yet: bulk builds work, but the
+publishing story still needs sharding for hosts with file-size limits
+([roadmap](ROADMAP.md)).
 
 ## What you get
 
@@ -307,6 +331,24 @@ $ make lint            # ruff, if installed
 ```
 
 Tests use a scripted transport, so retries, continuation and the 500-cap logic are exercised without touching the network.
+
+## Governance and policies
+
+| Document | What it covers |
+|---|---|
+| [docs/SCOPE.md](docs/SCOPE.md) | what is in scope, and the reasons for the exclusions |
+| [GOVERNANCE.md](GOVERNANCE.md) | who decides, how, and how to become a maintainer |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | setup, ground rules, schema-change checklist |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | expected behaviour and enforcement |
+| [SECURITY.md](SECURITY.md) | private reporting, secret handling, supported versions |
+| [DATA-LICENSE.md](DATA-LICENSE.md) | the licence split, per record type |
+| [SCHEMA.md](SCHEMA.md) | field-by-field mapping to Places API (New) |
+| [CHANGELOG.md](CHANGELOG.md) | what shipped, what broke, what was fixed |
+| [ROADMAP.md](ROADMAP.md) | next, later, and explicit non-goals |
+| [CITATION.cff](CITATION.cff) | how to cite the dataset |
+
+Security issues go through GitHub's private advisory flow, not the issue tracker.
+Data corrections belong upstream in Wikidata or Commons.
 
 ## Licence
 
