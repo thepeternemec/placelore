@@ -1,4 +1,4 @@
-.PHONY: test lint demo clean verify-google bulk-demo
+.PHONY: test lint demo clean verify-google bulk-demo bundle
 
 test:
 	python3 -m unittest discover -s tests -t . -v
@@ -11,6 +11,10 @@ bulk-demo:
 		--user-agent "wikicrawl-demo/0.3 (demo@example.org)"
 	python3 -m wikicrawl bulk status --db bulk-demo.sqlite
 	python3 -m wikicrawl export --db bulk-demo.sqlite --format google --out bulk-demo.json
+
+bundle:
+	rm -rf dist/demo && python3 -m wikicrawl publish --db data/world-slovenia.sqlite \
+		--out dist/demo --name wikicrawl-demo
 
 verify-google:
 	python3 -m wikicrawl verify --file tests/fixtures/google-payload.json \

@@ -35,6 +35,7 @@ from .links import (
 )
 from .normalize import normalize
 from .pages import fetch_pages
+from .publish import publish as publish_bundle
 from .schema import (
     ensure_schema,
     photo_index,
@@ -185,6 +186,14 @@ def _build_parser():
     bulk.add_argument("--limit", type=int, help="stop after N rows")
     bulk.add_argument("--endpoint", default="qlever", help="qlever | wdqs | URL")
     bulk.add_argument("--dry-run", action="store_true", help="build the query without sending it")
+
+    publish = sub.add_parser(
+        "publish", parents=[common], help="write a redistributable open-data bundle"
+    )
+    publish.add_argument("--out", required=True, help="output directory")
+    publish.add_argument("--name", default="wikicrawl-places")
+    publish.add_argument("--title")
+    publish.add_argument("--version")
 
     verify = sub.add_parser(
         "verify", parents=[common], help="parse an export with Google's protobuf messages"
@@ -496,6 +505,23 @@ def cmd_bulk(args):
         return 0
 
 
+def cmd_publish(args):
+    manifest = publish_bundle(
+        args.db, args.out, name=args.name, title=args.title, version=args.version
+    )
+    counts = manifest["counts"]
+    print("bundle: %s" % args.out)
+    print(
+        "  places %d  photos %d  links %d" % (counts["places"], counts["photos"], counts["links"])
+    )
+    for resource in manifest["resources"]:
+        print(
+            "  %-16s %8d rows  %s"
+            % (resource["path"], resource["row_count"], resource["hash"][:19] + "...")
+        )
+    return 0
+
+
 def cmd_verify(args):
     try:
         result = verify_files(args.file, args.photo_index)
@@ -527,6 +553,7 @@ def main(argv=None):
         "near": cmd_near,
         "bulk": cmd_bulk,
         "link": cmd_link,
+        "publish": cmd_publish,
         "verify": cmd_verify,
         "stats": cmd_stats,
     }

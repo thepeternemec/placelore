@@ -7,37 +7,52 @@ An open dataset of historical places — coordinates, descriptions and photograp
 
 The point is to stop paying per request for facts the world already contributed for free.
 
-## The problem
+## The migration
 
-Places data is metered twice.
+Most apps that show places today are built on a per-request API: Nearby Search
+for the list, Place Details for the photo, repeated for every user and every
+pan of the map. That works until it doesn't — the bill scales with traffic, and
+the terms stop you keeping what you fetched, so you can never amortise it.
 
-**It costs money per lookup.** Nearby Search, Text Search and Place Details are each billed per request. Serving a map of 2.2 million heritage sites — address, photo, rating — means millions of billable calls, repeated forever, because you cannot keep what you fetched.
+This project inverts that. The place details and the photographs are migrated
+onto Wikimedia's open storage, where they already exist, were reviewed by
+volunteers, and carry licences that permit redistribution. Google is reduced to
+what it is uniquely good at: a stable identifier.
 
-**It costs you the data.** Google's terms forbid pre-fetching, caching or storing Places content beyond narrow exceptions, with one exemption: `place_id` may be stored indefinitely. So the more you build on it, the less of it you own.
+| | Before | After |
+|---|---|---|
+| List of nearby places | Nearby Search, per request | own SQLite, per query |
+| Place details, photos | Place Details, per place | Wikimedia + Commons, one bulk pass |
+| Data ownership | cannot cache beyond limits | yours, CC BY-SA / per-file |
+| Serving cost | scales with traffic | zero |
+| Google dependency | every request | one ID column, optional |
 
-## The idea
-
-Split the problem along that line.
-
-| Layer | Source | Licence / terms | What it gives |
-|---|---|---|---|
-| The facts | Wikipedia + Wikidata | CC BY-SA 4.0 | names, coordinates, descriptions, heritage status |
-| The photos | Wikimedia Commons | CC BY-SA / CC0 / public domain, per file | real photographs with author and licence attached |
-| The identity | Google Places | `place_id` storable indefinitely | a durable join key to the commercial world |
-
-Wikimedia supplies the content; Google supplies only a key. One bulk pass on your own machine produces a database you can query, join and redistribute without a meter running.
-
-That is the whole thesis: **the expensive part of a places dataset is not the places, it's the per-request business model.** Coordinates and photographs are already contributed, reviewed and licensed by volunteers.
-
-Being open is a design requirement, not a slogan: the content needs no API key, the build is reproducible from a checkout, and the only piece that depends on Google — the identifier — is one you can store forever and share. Anyone can fork the database, host it, or rebuild it from scratch.
+The serving cost goes to zero because the database is local. What remains is a
+**one-time join**: to attach Google place IDs you either spend one Text Search
+call per place you care about, or import IDs you already hold
+(`link import`). Matching all 2.2 M places is itself 2.2 M billed calls, so match
+the subset you actually serve — the schema is built for partial coverage, with
+`unlinked` visible rather than implied.
 
 ### What this is not
 
 Honest boundaries, because a dataset that oversells itself is worse than none:
 
-- **Not a Places API replacement where Google's own data matters** — opening hours, phone numbers, ratings, live business status and structured street addresses do not exist in Wikimedia and are not invented here.
-- **Not Google photos.** Every image is a Commons file with its own licence and author; nothing is fetched from Google.
-- **Not a free pass on terms.** Storing `place_id` is permitted; storing the rest of a Places response is not. The schema enforces that distinction instead of ignoring it.
+- **Not a Places API replacement where Google's own data matters** — opening
+  hours, phone numbers, ratings, live business status and structured street
+  addresses do not exist in Wikimedia and are not invented here.
+- **Not Google photos.** Every image is a Commons file with its own licence and
+  author; nothing is fetched from Google.
+- **Not a free pass on terms.** Storing `place_id` is permitted; storing the rest
+  of a Places response is not. The schema enforces that distinction instead of
+  ignoring it.
+- **Not a claim that Wikimedia is complete.** Coverage tracks volunteer effort,
+  which is uneven by country and topic.
+
+Being open is a design requirement, not a slogan: the content needs no API key,
+the build is reproducible from a checkout, and `wikicrawl publish` writes a
+bundle anyone can verify and redistribute. See
+[DATA-LICENSE.md](DATA-LICENSE.md) for the exact split of rights.
 
 ## What you get
 
@@ -221,6 +236,37 @@ places instead of one per place. Items without a `P18` still land in the databas
 with their category recorded, so a later pass can fill the gap selectively
 instead of paying for every place.
 
+## Publishing an open bundle
+
+A database on your machine is not an open dataset. `publish` writes a directory
+someone else can download, verify and redistribute:
+
+```console
+$ python3 -m wikicrawl publish --db world.sqlite --out dist/slovenia --name wikicrawl-slovenia
+bundle: dist/slovenia
+  places 500  photos 377  links 0
+  places.jsonl          500 rows  sha256:24fb2c3f5039...
+  places.json           500 rows  sha256:6334bf9ae955...
+  photos.json           377 rows  sha256:b41d2f868316...
+  links.json              0 rows  sha256:2d18a2510da6...
+```
+
+| File | What |
+|---|---|
+| `places.jsonl` | one place per line, Places API (New) shape |
+| `places.json` | the same wrapped as a search response |
+| `photos.json` | photo resource name → URL, licence, author |
+| `links.json` | wiki place id → Google place id |
+| `ATTRIBUTION.md` | one line per photograph: resource name, file, author, licence, source |
+| `datapackage.json` | Frictionless descriptor: counts, SHA-256 per file, licences, field types |
+| `README.md` | what the bundle is, in plain language |
+
+The 500-place Slovenia bundle is 896 KB, of which `ATTRIBUTION.md` is 128 KB —
+attribution is the second-largest file in an honest open dataset, behind the
+payload itself, and that is the point.
+Every photo resource name in `places.jsonl` resolves in `photos.json` and appears
+in `ATTRIBUTION.md`; a test enforces both.
+
 ## Politeness
 
 * 0.2 s between requests by default (`--min-interval`), per client.
@@ -255,7 +301,7 @@ For bulk image downloads use the [Wikimedia dumps](https://dumps.wikimedia.org/)
 ## Development
 
 ```console
-$ make test            # 111 tests, no network (6 need the optional Google client)
+$ make test            # 117 tests, no network (6 need the optional Google client)
 $ make verify-google   # parse the fixture with Google's protobufs
 $ make lint            # ruff, if installed
 ```
@@ -264,6 +310,14 @@ Tests use a scripted transport, so retries, continuation and the 500-cap logic a
 
 ## Licence
 
-Code: MIT. Crawled text: CC BY-SA 4.0 via Wikipedia. Photographs: each file's own licence — keep the attribution in `photo.artist` and link `photo.page` when you republish. Google place IDs are stored under Google's terms, which permit indefinite storage of that field; everything else Google-sourced is time-limited and labelled as such.
+Code: MIT. Text and descriptions: CC BY-SA 4.0 from Wikipedia. Photographs: each
+file's own licence, attributed per file. Google place IDs: stored under Google's
+terms, which permit indefinite storage of that field. Fields this project
+generates (`wc:` ids, inferred types, match scores) are released CC0, as is the
+compilation to the extent we hold any rights in it.
 
-If you build on this dataset, the honest attribution is: content by Wikimedia contributors, place identifiers by Google, schema by this project.
+The full split, including what share-alike does and does not cover, is in
+[DATA-LICENSE.md](DATA-LICENSE.md).
+
+If you build on this dataset, the honest attribution is: content by Wikimedia
+contributors, place identifiers by Google, schema by this project.
