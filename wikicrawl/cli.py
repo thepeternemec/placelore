@@ -21,6 +21,7 @@ from .bulk import enrich as bulk_enrich
 from .bulk import stage as bulk_stage
 from .bulk import stage_countries as bulk_stage_countries
 from .bulk import status as bulk_status
+from .contribute import collect_gaps, render_json, render_markdown
 from .crawl import crawl_category, crawl_links, geosearch
 from .google import PlacesClient, match_places
 from .images import COMMONS_API, fetch_imageinfo
@@ -194,6 +195,11 @@ def _build_parser():
     publish.add_argument("--name", default="wikicrawl-places")
     publish.add_argument("--title")
     publish.add_argument("--version")
+
+    gaps = sub.add_parser("gaps", parents=[common], help="list what is missing upstream, per place")
+    gaps.add_argument("--out", help="write the report here (default: stdout)")
+    gaps.add_argument("--format", choices=("md", "json"), default="md")
+    gaps.add_argument("--limit", type=int, default=100, help="rows per section")
 
     verify = sub.add_parser(
         "verify", parents=[common], help="parse an export with Google's protobuf messages"
@@ -505,6 +511,27 @@ def cmd_bulk(args):
         return 0
 
 
+def cmd_gaps(args):
+    with Store(args.db) as store:
+        gaps = collect_gaps(store.conn, limit=args.limit)
+        if args.format == "json":
+            text = render_json(gaps)
+        else:
+            text = render_markdown(gaps, source=os.path.basename(args.db))
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as handle:
+                handle.write(text)
+            _log(args, "wrote %s" % args.out)
+        else:
+            print(text)
+        total = sum(section["count"] for section in gaps.values())
+        _log(
+            args,
+            "gaps: %d across %d sections" % (total, sum(1 for s in gaps.values() if s["count"])),
+        )
+        return 0
+
+
 def cmd_publish(args):
     manifest = publish_bundle(
         args.db, args.out, name=args.name, title=args.title, version=args.version
@@ -553,6 +580,7 @@ def main(argv=None):
         "near": cmd_near,
         "bulk": cmd_bulk,
         "link": cmd_link,
+        "gaps": cmd_gaps,
         "publish": cmd_publish,
         "verify": cmd_verify,
         "stats": cmd_stats,

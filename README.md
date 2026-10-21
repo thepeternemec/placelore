@@ -18,6 +18,29 @@ identifier.
 no opening hours, no business directory — see [docs/SCOPE.md](docs/SCOPE.md) for
 why that line makes the data trustworthy rather than merely incomplete.
 
+## Open, and it gives back
+
+This is free software under a licence that lets you fork it, and free data under
+licences that let you redistribute it. No API key is needed to build it, no
+service of ours sits in the middle, and the output bundle carries its own
+attribution so it can outlive this repository.
+
+It also tries to leave Wikimedia better than it found it. `wikicrawl gaps` turns
+the database's holes into a work list for editors — every place missing a
+photograph, a Commons category, an article or a heritage designation, linked to
+its Wikidata item:
+
+```console
+$ python3 -m wikicrawl gaps --db world.sqlite --out gaps.md
+gaps: 735 across 4 sections
+```
+
+On the 500-place Slovenia sample that is 123 places without a photo, 447 without
+an English article, and 4 photographs missing attribution. Fix them upstream and
+every future crawl inherits the fix. See
+[docs/CONTRIBUTING-TO-WIKIMEDIA.md](docs/CONTRIBUTING-TO-WIKIMEDIA.md); the tool
+never writes to Wikimedia itself — every edit is a human one.
+
 ## The migration
 
 Most apps that show places today are built on a per-request API: Nearby Search
@@ -260,6 +283,16 @@ places instead of one per place. Items without a `P18` still land in the databas
 with their category recorded, so a later pass can fill the gap selectively
 instead of paying for every place.
 
+## Giving something back
+
+```console
+$ python3 -m wikicrawl gaps --db world.sqlite --out gaps.md          # markdown, linked
+$ python3 -m wikicrawl gaps --db world.sqlite --format json          # for tooling
+```
+
+Each section links to Wikidata, and the counts are complete even when the tables
+are capped, so the report is usable at 500 places or 2.2 million.
+
 ## Publishing an open bundle
 
 A database on your machine is not an open dataset. `publish` writes a directory
@@ -325,7 +358,7 @@ For bulk image downloads use the [Wikimedia dumps](https://dumps.wikimedia.org/)
 ## Development
 
 ```console
-$ make test            # 117 tests, no network (6 need the optional Google client)
+$ make test            # 124 tests, no network (6 need the optional Google client)
 $ make verify-google   # parse the fixture with Google's protobufs
 $ make lint            # ruff, if installed
 ```
@@ -337,6 +370,7 @@ Tests use a scripted transport, so retries, continuation and the 500-cap logic a
 | Document | What it covers |
 |---|---|
 | [docs/SCOPE.md](docs/SCOPE.md) | what is in scope, and the reasons for the exclusions |
+| [docs/CONTRIBUTING-TO-WIKIMEDIA.md](docs/CONTRIBUTING-TO-WIKIMEDIA.md) | how to fix gaps upstream, and what not to add |
 | [GOVERNANCE.md](GOVERNANCE.md) | who decides, how, and how to become a maintainer |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | setup, ground rules, schema-change checklist |
 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | expected behaviour and enforcement |

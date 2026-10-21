@@ -12,6 +12,34 @@ All notable changes are recorded here. Format follows
 - Resumable `bulk run` that drains `pending` in one command
 - Sharded bundle output for hosts with a 100 MB file limit
 
+## [1.0.0] — 2026-10-22
+
+The release that says what the project is for. 1.0 means the data model and the
+CLI are a contract: field names follow Places API (New), ids are stable, and
+breaking either needs a major version. It does **not** mean two million places
+have been shipped — building them is a documented, resumable job.
+
+### Added
+
+- **`gaps`**: turns the database's holes into a work list for Wikimedia editors —
+  missing photographs, Commons categories, articles, heritage designations,
+  coordinates, attribution and licences — each linked to its Wikidata item.
+  Markdown for people, JSON for tooling; counts complete, rows capped.
+- **`docs/CONTRIBUTING-TO-WIKIMEDIA.md`**: how to make each of those edits, how to
+  batch them with OpenRefine and QuickStatements, and what not to import (Google
+  coordinates, scraped addresses, unlicensed photos).
+- README section on giving back, with the real numbers from the sample dataset.
+
+### Changed
+
+- GitHub Actions bumped to `checkout@v7`, `setup-python@v7`,
+  `action-gh-release@v3` (applied together; Dependabot PRs superseded).
+- Release workflow now builds, installs and imports the wheel before publishing.
+
+### Data
+
+- Sample bundle shipped as a release asset, with its SHA-256 in the release notes.
+
 ## [0.3.0] — 2026-10-21
 
 The release that makes "all places" and "open for everyone" mean something
