@@ -120,7 +120,7 @@ def normalize(conn, dedupe=True, drop_missing_coords=True):
                                 google_fetched_at, match_confidence, match_method,
                                 wikidata_id, wikipedia_url, commons_category,
                                 country_code, source, created_at, updated_at)
-            VALUES (?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, 'OPERATIONAL',
+            VALUES (?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL,
                     NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, NULL, NULL,
                     'wikimedia', ?, ?)
             ON CONFLICT(id) DO UPDATE SET

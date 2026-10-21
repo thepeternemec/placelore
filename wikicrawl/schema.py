@@ -60,6 +60,17 @@ GOOGLE_TYPES = {
     "locality",
 }
 
+# Valid Google types that may NOT be passed in Nearby Search ``includedTypes``
+# (Table B in Google's type tables). They are fine in ``types`` output and in
+# Text Search, but a Nearby request containing one is rejected.
+TABLE_B_TYPES = {"bridge"}
+
+
+def nearby_types(types):
+    """Filter to types that Nearby Search will accept."""
+    return [t for t in types if t not in TABLE_B_TYPES]
+
+
 # Keyword -> Google type, matched against categories and infobox values.
 CATEGORY_RULES = (
     ("archaeological", "tourist_attraction"),
@@ -96,7 +107,7 @@ CATEGORY_RULES = (
     ("zoo", "zoo"),
     ("aquarium", "aquarium"),
     ("stadium", "stadium"),
-    ("bridge", "bridge"),
+    ("bridge", "bridge"),  # Table B: never send this to Nearby
     ("arch", "historical_landmark"),
     ("obelisk", "historical_landmark"),
     ("tower", "historical_landmark"),
@@ -128,7 +139,7 @@ CREATE TABLE IF NOT EXISTS places (
     lng                 REAL NOT NULL,
     types               TEXT NOT NULL DEFAULT '[]',   -- JSON array
     primary_type        TEXT,
-    business_status     TEXT DEFAULT 'OPERATIONAL',
+    business_status     TEXT,                  -- NULL unless Google told us
     website_uri         TEXT,
     google_maps_uri     TEXT,
     rating              REAL,                  -- Google-only

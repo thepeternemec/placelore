@@ -141,6 +141,41 @@ class TestSerialisation(unittest.TestCase):
         self.assertEqual(index[PHOTO_ROW["name"]]["license"], "CC BY-SA 4.0")
 
 
+class TestGoogleVocabulary(unittest.TestCase):
+    """Every type we can emit must exist in Google's published type tables."""
+
+    @classmethod
+    def setUpClass(cls):
+        path = os.path.join(os.path.dirname(__file__), "fixtures", "google_place_types.json")
+        with open(path, encoding="utf-8") as handle:
+            tables = json.load(handle)
+        cls.table_a = set(tables["table_a"])
+        cls.table_b = set(tables["table_b"])
+        cls.all_types = cls.table_a | cls.table_b
+
+    def test_vocabulary_is_a_subset_of_googles_list(self):
+        from wikicrawl.schema import GOOGLE_TYPES
+
+        self.assertLessEqual(GOOGLE_TYPES, self.all_types)
+
+    def test_inference_only_emits_published_types(self):
+        samples = [
+            {"title": "X", "categories": ["Category:Churches in Italy"]},
+            {"title": "X", "categories": ["Category:Castles in Slovenia"]},
+            {"title": "X", "categories": ["Category:Bridges in Rome"]},
+            {"title": "X", "categories": ["Category:Zoos in Germany"]},
+        ]
+        for sample in samples:
+            for value in infer_types(sample):
+                self.assertIn(value, self.all_types)
+
+    def test_nearby_filter_drops_table_b(self):
+        from wikicrawl.schema import nearby_types
+
+        self.assertIn("bridge", self.table_b)
+        self.assertEqual(nearby_types(["bridge", "museum"]), ["museum"])
+
+
 class TestTypeInference(unittest.TestCase):
     def test_template_plumbing_does_not_create_zoo(self):
         types = infer_types(
@@ -243,6 +278,13 @@ class TestNormalize(unittest.TestCase):
         for name in os.listdir(self.tmp):
             os.unlink(os.path.join(self.tmp, name))
         os.rmdir(self.tmp)
+
+    def test_does_not_invent_business_status(self):
+        normalize(self.conn)
+        row = self.conn.execute("SELECT business_status FROM places").fetchone()
+        self.assertIsNone(row["business_status"])
+        payload = place_to_google(dict(self.conn.execute("SELECT * FROM places").fetchone()))
+        self.assertNotIn("businessStatus", payload)
 
     def test_builds_places_and_photos(self):
         summary = normalize(self.conn)
