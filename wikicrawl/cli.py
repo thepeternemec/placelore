@@ -25,6 +25,7 @@ from .links import (
     export_links,
     import_links,
     link_report,
+    remove_link,
     set_primary,
     validate_google_id,
 )
@@ -154,7 +155,7 @@ def _build_parser():
     near.add_argument("--limit", type=int, default=20)
 
     link = sub.add_parser("link", parents=[common], help="manage wiki place <-> google id links")
-    link.add_argument("action", choices=("import", "export", "check", "stats", "promote"))
+    link.add_argument("action", choices=("import", "export", "check", "stats", "promote", "remove"))
     link.add_argument("--file", help="CSV or JSON rows for import")
     link.add_argument("--out", help="destination for export")
     link.add_argument("--method", default="import", help="provenance label for imported links")
@@ -402,6 +403,14 @@ def cmd_link(args):
                 print("%-5s %s" % (severity.upper(), message))
             print("OK" if not problems else "%d problem(s)" % len(problems))
             return 1 if any(severity == "error" for severity, _ in problems) else 0
+
+        if args.action == "remove":
+            if not args.place or not args.google_id:
+                raise SystemExit("--place and --google-id are required")
+            remove_link(store.conn, args.place, validate_google_id(args.google_id))
+            store.conn.commit()
+            _log(args, "removed %s -> %s" % (args.place, args.google_id))
+            return 0
 
         if args.action == "promote":
             if not args.place or not args.google_id:

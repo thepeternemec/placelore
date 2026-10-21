@@ -13,6 +13,7 @@ from wikicrawl.links import (
     export_links,
     import_links,
     link_report,
+    remove_link,
     set_primary,
     validate_google_id,
 )
@@ -78,6 +79,29 @@ class TestLinks(Base):
         ).fetchone()
         self.assertEqual(row["google_place_id"], GOOGLE_B)
         self.assertEqual(check_integrity(self.conn), [])
+
+    def test_remove_primary_promotes_the_next_candidate(self):
+        add_link(self.conn, "wc:enwiki:1", GOOGLE_A, method="test", confidence=0.4)
+        add_link(self.conn, "wc:enwiki:1", GOOGLE_B, method="test", confidence=0.9)
+        remove_link(self.conn, "wc:enwiki:1", GOOGLE_A)
+        row = self.conn.execute(
+            "SELECT google_place_id FROM places WHERE id='wc:enwiki:1'"
+        ).fetchone()
+        self.assertEqual(row["google_place_id"], GOOGLE_B)
+        self.assertEqual(check_integrity(self.conn), [])
+
+    def test_remove_last_link_clears_the_cache(self):
+        add_link(self.conn, "wc:enwiki:1", GOOGLE_A, method="test", confidence=0.8)
+        remove_link(self.conn, "wc:enwiki:1", GOOGLE_A)
+        row = self.conn.execute(
+            "SELECT google_place_id, match_confidence FROM places WHERE id='wc:enwiki:1'"
+        ).fetchone()
+        self.assertIsNone(row["google_place_id"])
+        self.assertIsNone(row["match_confidence"])
+
+    def test_removing_unknown_link_raises(self):
+        with self.assertRaises(LinkError):
+            remove_link(self.conn, "wc:enwiki:1", GOOGLE_A)
 
     def test_duplicate_add_updates_confidence_only(self):
         add_link(self.conn, "wc:enwiki:1", GOOGLE_A, method="test", confidence=0.5)

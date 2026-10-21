@@ -127,6 +127,33 @@ def set_primary(conn, place_id, google_place_id):
     sync_cache(conn, place_id=place_id)
 
 
+def remove_link(conn, place_id, google_place_id):
+    """Delete a link; if it was primary, promote the best remaining candidate."""
+    google_place_id = validate_google_id(google_place_id)
+    row = conn.execute(
+        "SELECT is_primary FROM place_links WHERE place_id = ? AND google_place_id = ?",
+        (place_id, google_place_id),
+    ).fetchone()
+    if not row:
+        raise LinkError("no such link: %s -> %s" % (place_id, google_place_id))
+
+    conn.execute(
+        "DELETE FROM place_links WHERE place_id = ? AND google_place_id = ?",
+        (place_id, google_place_id),
+    )
+    if row["is_primary"]:
+        replacement = conn.execute(
+            "SELECT google_place_id FROM place_links WHERE place_id = ?"
+            " ORDER BY verified DESC, confidence DESC LIMIT 1",
+            (place_id,),
+        ).fetchone()
+        if replacement:
+            set_primary(conn, place_id, replacement["google_place_id"])
+        else:
+            sync_cache(conn, place_id=place_id)
+    return True
+
+
 def mark_verified(conn, place_id, google_place_id, verified=True):
     conn.execute(
         "UPDATE place_links SET verified = ? WHERE place_id = ? AND google_place_id = ?",
@@ -145,14 +172,14 @@ def sync_cache(conn, place_id=None):
             SELECT l.google_place_id FROM place_links l
             WHERE l.place_id = places.id AND l.is_primary = 1
         ),
-        match_confidence = COALESCE((
+        match_confidence = (
             SELECT l.confidence FROM place_links l
             WHERE l.place_id = places.id AND l.is_primary = 1
-        ), match_confidence),
-        match_method = COALESCE((
+        ),
+        match_method = (
             SELECT l.method FROM place_links l
             WHERE l.place_id = places.id AND l.is_primary = 1
-        ), match_method)
+        )
         WHERE id IN (SELECT id FROM places p %s)
         """
         % where,
