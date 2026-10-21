@@ -72,7 +72,7 @@ bundle anyone can verify and redistribute. See
 | Maturity | working end to end; schema stable, CLI still moving |
 | Maintainers | one ([governance](GOVERNANCE.md)) — contributions welcome |
 | Tests | 117, all offline; plus a CI job that parses the output with Google's protobufs |
-| Data built so far | 45 places (Rome), 500 places / 377 photos (Slovenia, in a verified bundle) |
+| Data built so far | 45 places (Rome), 500 places / 377 photos (Slovenia) — [download the verified bundle](https://github.com/thepeternemec/wikipedia-crawl/releases/latest) |
 
 Not production-hardened for a 2.2 M-place release yet: bulk builds work, but the
 publishing story still needs sharding for hosts with file-size limits
