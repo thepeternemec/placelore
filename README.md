@@ -80,6 +80,54 @@ Shrink `--cell` (60–100 m works for dense historic centres) until the warning 
 $ wikicrawl collect --seed "Colosseum" --depth 1 --limit 200 --db rome.sqlite
 ```
 
+## Clean, Google-shaped output
+
+After crawling, `normalize` builds the product layer: one row per place with
+Places API (New) field names, stable ids, and photos that keep their licence and
+attribution. The crawl tables stay behind as provenance.
+
+```console
+$ wikicrawl normalize --db rome.sqlite
+places=87 photos=61 skipped=12 duplicates=3
+$ wikicrawl export --db rome.sqlite --format google --out places.json
+$ wikicrawl export --db rome.sqlite --format photo-index --out photos.json
+```
+
+`places.json` is a strict `{"places": [...]}` payload — the same envelope as
+Nearby/Text Search — so code written against the Places API can parse it
+unchanged:
+
+```json
+{"places": [{
+  "id": "wc:enwiki:553500",
+  "types": ["historical_landmark"],
+  "displayName": {"text": "Arch of Constantine", "languageCode": "en"},
+  "location": {"latitude": 41.88972, "longitude": 12.49083},
+  "primaryType": "historical_landmark",
+  "businessStatus": "OPERATIONAL",
+  "photos": [{"name": "places/wc:enwiki:553500/photos/commons-arch-of-constantine-rome-south-side",
+              "widthPx": 6272, "heightPx": 5292,
+              "authorAttributions": [{"displayName": "NikonZ7II (Paris Orlando)",
+                                      "uri": "https://commons.wikimedia.org/wiki/User:NikonZ7II"}]}]
+}]}
+```
+
+Image URLs live in `photos.json`, keyed by photo `name`, because Google's
+`Photo` message has no URL field — mixing them in would break the shape.
+
+Linking to Google itself is one command, and `--dry-run` shows the searches
+before spending quota:
+
+```console
+$ wikicrawl google-match --db rome.sqlite --dry-run --limit 20
+$ wikicrawl google-match --db rome.sqlite --limit 20 --threshold 0.6
+```
+
+Only `google_place_id` is stored by default, because Google's terms permit
+storing place IDs indefinitely but not other Place content. `--store-fields`
+opts into caching addresses too, and `v_google_stale` then lists what has aged
+past the refresh window. See [SCHEMA.md](SCHEMA.md) for the full mapping.
+
 ## Enrich and export
 
 ```console
@@ -128,12 +176,24 @@ Use `--force` to re-fetch pages that were already visited (for example after a p
 
 ## Data model
 
+Two layers: provenance, and product.
+
 ```sql
-pages(pageid PK, title UNIQUE, url, lat, lon, coord_source, extract, summary,
-      image, image_url, infobox JSON, fetched_at)
+-- product (Google Places shape)
+places(id PK, name, display_name, lat, lng, types JSON, primary_type,
+       formatted_address, website_uri, rating, google_place_id UNIQUE,
+       google_fetched_at, match_confidence, wikidata_id, source, ...)
+place_photos(id PK, place_id, name, url, width_px, height_px, author_name,
+             author_uri, license, position)
+
+-- provenance (what the wiki said)
+pages(pageid PK, title UNIQUE, url, lat, lon, image, infobox JSON, fetched_at)
 page_categories(pageid, category)
-photos(file PK, url, width, height, mime, license, artist, credit, description, description_url)
+photos(file PK, url, width, height, license, artist, description_url)
 visited(title PK, source, visited_at)
+
+-- audit
+google_matches(place_id, google_place_id, score, method, query, matched_at)
 ```
 
 `lat`/`lon` come from `prop=coordinates`, so they are the article's *primary* coordinate, not a regex over wikitext. File names are normalised (underscores → spaces, first letter case) before joining `pages.image` to `photos.file`, because pageimages and Commons disagree often enough to break naive joins.
@@ -155,9 +215,12 @@ Run one crawl at a time per project. If you need bulk image downloads, use the [
 * **Coordinates are the article's, not the subject's bounding box.** Large sites collapse to one point.
 * **Infobox parsing is heuristic.** Nested templates and `{{convert}}` are handled; exotic templates are not.
 * **No Wikidata or Commons-category crawling yet** (see roadmap). Heritage filtering (`P1435`), Wiki Loves Monuments IDs and per-monument category photo sets are the next step.
+* **Google matching is heuristic.** Name similarity plus distance links most famous places; ambiguous names in dense old towns need a higher `--threshold` and manual review via `google_matches`.
+* **No API key is shipped, and none is needed** for crawling. `google-match` is the only command that spends Google quota.
 
 ## Roadmap
 
+- [x] Google Places (New) compatible clean layer, matching and export
 - [ ] `--wikidata`: attach QID, heritage designation, Commons category per page
 - [ ] `--commons-category`: crawl a monument's curated Commons category instead of geosearch
 - [ ] `--bbox`: rectangular region sweeps with automatic cell subdivision
@@ -167,7 +230,7 @@ Run one crawl at a time per project. If you need bulk image downloads, use the [
 ## Development
 
 ```console
-$ make test     # 25 offline tests, no network
+$ make test     # 58 offline tests, no network
 $ make lint     # ruff, if installed
 ```
 

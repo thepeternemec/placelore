@@ -10,13 +10,18 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import json
+import os
 import sys
 
 from . import __version__
 from .api import DEFAULT_UA, MediaWiki
 from .crawl import crawl_category, crawl_links, geosearch
+from .google import PlacesClient, match_places
 from .images import COMMONS_API, fetch_imageinfo
+from .normalize import normalize
 from .pages import fetch_pages
+from .schema import ensure_schema, photo_index, place_to_google, places_response
 from .store import Store
 
 
@@ -73,7 +78,37 @@ def _build_parser():
 
     export = sub.add_parser("export", parents=[common], help="write pages to a file")
     export.add_argument("--out", default="pages.jsonl")
-    export.add_argument("--format", choices=("jsonl", "csv"), default="jsonl")
+    export.add_argument(
+        "--format",
+        choices=("jsonl", "csv", "google", "photo-index"),
+        default="jsonl",
+        help="google = strict Places API (New) payload",
+    )
+
+    norm = sub.add_parser(
+        "normalize", parents=[common], help="build the Google-shaped places/place_photos layer"
+    )
+    norm.add_argument(
+        "--no-dedupe", action="store_true", help="keep places sharing a name and a ~10 m cell"
+    )
+
+    match = sub.add_parser("google-match", parents=[common], help="link places to Google place ids")
+    match.add_argument(
+        "--api-key",
+        default=os.environ.get("GOOGLE_MAPS_API_KEY", ""),
+        help="Places API key (or set GOOGLE_MAPS_API_KEY)",
+    )
+    match.add_argument("--limit", type=int, default=100)
+    match.add_argument(
+        "--threshold", type=float, default=0.55, help="minimum score to accept a match (0..1)"
+    )
+    match.add_argument("--radius", type=float, default=500, help="bias circle in metres")
+    match.add_argument(
+        "--store-fields",
+        action="store_true",
+        help="also store Google address fields (refresh within 30 days)",
+    )
+    match.add_argument("--dry-run", action="store_true")
 
     photos = sub.add_parser(
         "photos", parents=[common], help="resolve lead images to upload URLs and licences"
@@ -158,10 +193,64 @@ def cmd_photos(args):
         _log(args, "stored %d image records" % resolved)
 
 
+def cmd_normalize(args):
+    with Store(args.db) as store:
+        ensure_schema(store.conn)
+        summary = normalize(store.conn, dedupe=not args.no_dedupe)
+        _log(
+            args,
+            "places=%(places)d photos=%(photos)d skipped=%(skipped)d "
+            "duplicates=%(duplicates)d" % summary,
+        )
+
+
+def cmd_google_match(args):
+    if not args.api_key and not args.dry_run:
+        sys.exit("no API key: pass --api-key or set GOOGLE_MAPS_API_KEY")
+    # dry-run makes no requests, so a placeholder key is enough
+    client = PlacesClient(args.api_key or "dry-run")
+    with Store(args.db) as store:
+        ensure_schema(store.conn)
+        summary = match_places(
+            store.conn,
+            client,
+            limit=args.limit,
+            threshold=args.threshold,
+            radius_m=args.radius,
+            store_fields=args.store_fields,
+            dry_run=args.dry_run,
+            log=lambda m: _log(args, m),
+        )
+        _log(args, "matched=%(matched)d rejected=%(rejected)d requests=%(requests)d" % summary)
+
+
 def cmd_export(args):
     with Store(args.db) as store:
-        (store.export_jsonl if args.format == "jsonl" else store.export_csv)(args.out)
-        _log(args, "wrote %d pages to %s" % (store.count(), args.out))
+        if args.format == "google":
+            _export_google(store.conn, args.out)
+        elif args.format == "photo-index":
+            rows = store.conn.execute("SELECT * FROM place_photos ORDER BY id").fetchall()
+            index = photo_index([dict(r) for r in rows])
+            with open(args.out, "w", encoding="utf-8") as handle:
+                json.dump(index, handle, indent=2)
+            _log(args, "wrote %d photo references to %s" % (len(index), args.out))
+        else:
+            (store.export_jsonl if args.format == "jsonl" else store.export_csv)(args.out)
+            _log(args, "wrote %d pages to %s" % (store.count(), args.out))
+
+
+def _export_google(conn, out):
+    """Write a payload that a Places API (New) client can parse unchanged."""
+    places = []
+    for row in conn.execute("SELECT * FROM places ORDER BY name"):
+        photos = conn.execute(
+            "SELECT * FROM place_photos WHERE place_id=? ORDER BY position, id",
+            (row["id"],),
+        ).fetchall()
+        places.append(place_to_google(dict(row), [dict(p) for p in photos]))
+    with open(out, "w", encoding="utf-8") as handle:
+        json.dump(places_response(places), handle, ensure_ascii=False, indent=2)
+    print("wrote %d places to %s" % (len(places), out), file=sys.stderr)
 
 
 def cmd_near(args):
@@ -185,6 +274,8 @@ def main(argv=None):
     handlers = {
         "collect": cmd_collect,
         "photos": cmd_photos,
+        "normalize": cmd_normalize,
+        "google-match": cmd_google_match,
         "export": cmd_export,
         "near": cmd_near,
         "stats": cmd_stats,
