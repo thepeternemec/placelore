@@ -194,6 +194,49 @@ Matching is Text Search biased to a 500 m circle, scored `0.7 × name similarity
 
 `links.json` is the explicit chain — wiki place id → Google place id → photos with URL, licence and author, plus an `unlinked` list so gaps are stated rather than implied.
 
+## Drop-in Nearby Search server
+
+The protocol is the compatibility layer. `serve` answers Google's endpoints from
+a local database, so an app changes one base URL:
+
+```js
+const BASE = "http://127.0.0.1:8080";          // was https://places.googleapis.com
+await fetch(`${BASE}/v1/places:searchNearby`, { method: "POST", headers, body });
+```
+
+```console
+$ python3 -m wikicrawl slim  --db world.sqlite --out serve.sqlite   # 940 KB -> 300 KB
+$ python3 -m wikicrawl serve --db serve.sqlite --port 8080
+serving 500 places, 377 photos on http://127.0.0.1:8080
+
+$ curl -s localhost:8080/v1/places:searchNearby \
+    -H "X-Goog-FieldMask: places.id,places.displayName,places.location" \
+    -d '{"locationRestriction":{"circle":{"center":{"latitude":46.0503,"longitude":14.5045},"radius":500}},"maxResultCount":3}'
+{"places": [{"id": "wc:Q12789820", "displayName": {"text": "Gerber House", ...}}]}
+```
+
+| Endpoint | Google equivalent |
+| --- | --- |
+| `POST /v1/places:searchNearby` | Nearby Search (New) |
+| `POST /v1/places:searchText` | Text Search (New) |
+| `GET /v1/places/{id}` | Place Details (New) |
+| `GET /v1/meta`, `GET /health` | dataset counts, health |
+
+`X-Goog-FieldMask` is honoured, including nested paths (`places.photos.name`);
+errors use Google's envelope (`{"error": {"code": 400, ...}}`); results are capped
+at 20 and nearest-first. `--prefer-google-ids` returns `google_place_id` as `id`
+where a link exists, so an app that stored Google ids keeps resolving them while
+unlinked places still serve under `wc:` ids.
+
+Differences are deliberate and listed in [docs/API.md](docs/API.md): no pagination
+tokens, no key required, no ratings or hours that Wikimedia does not have. The
+server binds `127.0.0.1`, is read-only, and expects a reverse proxy for anything
+public — it is a dataset access layer, not a hardened service.
+
+`serve` only needs the slim database: `slim` drops provenance, categories,
+infobox JSON and crawl bookkeeping, keeping exactly the columns the API can
+return. On the 500-place sample that is **940 KB → 300 KB**.
+
 ## The payload parses with Google's code
 
 Shape claims are cheap, so the repo checks its own output with `google.maps.places_v1`, the generated messages their Python client uses:
@@ -358,7 +401,7 @@ For bulk image downloads use the [Wikimedia dumps](https://dumps.wikimedia.org/)
 ## Development
 
 ```console
-$ make test            # 124 tests, no network (6 need the optional Google client)
+$ make test            # 143 tests, no network (6 need the optional Google client)
 $ make verify-google   # parse the fixture with Google's protobufs
 $ make lint            # ruff, if installed
 ```
@@ -371,6 +414,7 @@ Tests use a scripted transport, so retries, continuation and the 500-cap logic a
 |---|---|
 | [docs/SCOPE.md](docs/SCOPE.md) | what is in scope, and the reasons for the exclusions |
 | [docs/CONTRIBUTING-TO-WIKIMEDIA.md](docs/CONTRIBUTING-TO-WIKIMEDIA.md) | how to fix gaps upstream, and what not to add |
+| [docs/API.md](docs/API.md) | the served protocol: endpoints, masks, differences |
 | [GOVERNANCE.md](GOVERNANCE.md) | who decides, how, and how to become a maintainer |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | setup, ground rules, schema-change checklist |
 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | expected behaviour and enforcement |

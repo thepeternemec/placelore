@@ -44,6 +44,8 @@ from .schema import (
     places_response,
     rebuild_schema,
 )
+from .serve import make_server
+from .slim import build_slim
 from .store import Store
 from .verify import MissingDependency, format_report, verify_files
 from .wikidata import SparqlClient
@@ -195,6 +197,23 @@ def _build_parser():
     publish.add_argument("--name", default="wikicrawl-places")
     publish.add_argument("--title")
     publish.add_argument("--version")
+
+    slim = sub.add_parser(
+        "slim", parents=[common], help="build a compact read-only database for serving"
+    )
+    slim.add_argument("--out", required=True)
+    slim.add_argument("--force", action="store_true")
+
+    serve = sub.add_parser(
+        "serve", parents=[common], help="HTTP server speaking the Places API (New) protocol"
+    )
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8080)
+    serve.add_argument(
+        "--prefer-google-ids",
+        action="store_true",
+        help="return google_place_id as id when a link exists",
+    )
 
     gaps = sub.add_parser("gaps", parents=[common], help="list what is missing upstream, per place")
     gaps.add_argument("--out", help="write the report here (default: stdout)")
@@ -511,6 +530,41 @@ def cmd_bulk(args):
         return 0
 
 
+def cmd_slim(args):
+    try:
+        stats = build_slim(args.db, args.out, overwrite=args.force)
+    except FileExistsError as exc:
+        sys.exit(str(exc))
+    _log(args, "places=%(places)d photos=%(photos)d" % stats)
+    _log(
+        args,
+        "size: %.0f KB -> %.0f KB (%.0f%%)"
+        % (stats["source_bytes"] / 1024, stats["slim_bytes"] / 1024, stats["ratio"] * 100),
+    )
+
+
+def cmd_serve(args):
+    server = make_server(
+        args.db, host=args.host, port=args.port, prefer_google_ids=args.prefer_google_ids
+    )
+    stats = server.index.stats()
+    print(
+        "serving %d places, %d photos on http://%s:%d"
+        % (stats["places"], stats["photos"], args.host, server.server_address[1]),
+        file=sys.stderr,
+    )
+    print("  POST /v1/places:searchNearby   POST /v1/places:searchText", file=sys.stderr)
+    print("  GET  /v1/places/{id}           GET  /v1/meta", file=sys.stderr)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.shutdown()
+        server.index.close()
+    return 0
+
+
 def cmd_gaps(args):
     with Store(args.db) as store:
         gaps = collect_gaps(store.conn, limit=args.limit)
@@ -580,6 +634,8 @@ def main(argv=None):
         "near": cmd_near,
         "bulk": cmd_bulk,
         "link": cmd_link,
+        "slim": cmd_slim,
+        "serve": cmd_serve,
         "gaps": cmd_gaps,
         "publish": cmd_publish,
         "verify": cmd_verify,

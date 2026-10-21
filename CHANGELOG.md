@@ -4,6 +4,23 @@ All notable changes are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-10-22
+
+### Added
+
+- **`serve`**: an HTTP server speaking `places.googleapis.com/v1` — Nearby
+  Search, Text Search and Place Details — from a local SQLite file. Honours
+  `X-Goog-FieldMask` including nested paths, returns Google's error envelope,
+  caps at 20 results, and can return linked Google ids as `id` with
+  `--prefer-google-ids`.
+- **`slim`**: builds the read-only serving database, dropping provenance,
+  categories, infobox JSON and crawl bookkeeping. 940 KB → 300 KB on the sample.
+- **`docs/API.md`**: base-URL swap example, endpoint and field support tables,
+  and the deliberate differences.
+- Tests for the protocol layer, field-mask projection, slim builds, and HTTP
+  responses, including a check that the Nearby response parses with
+  `google.maps.places_v1`.
+
 ## [Unreleased]
 
 ### Planned
