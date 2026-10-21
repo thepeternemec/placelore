@@ -17,6 +17,10 @@ import sys
 
 from . import __version__
 from .api import DEFAULT_UA, MediaWiki
+from .bulk import enrich as bulk_enrich
+from .bulk import stage as bulk_stage
+from .bulk import stage_countries as bulk_stage_countries
+from .bulk import status as bulk_status
 from .crawl import crawl_category, crawl_links, geosearch
 from .google import PlacesClient, match_places
 from .images import COMMONS_API, fetch_imageinfo
@@ -40,6 +44,7 @@ from .schema import (
 )
 from .store import Store
 from .verify import MissingDependency, format_report, verify_files
+from .wikidata import SparqlClient
 
 
 def _build_parser():
@@ -169,6 +174,17 @@ def _build_parser():
         default=True,
         help="omit places with no google id from the export",
     )
+
+    bulk = sub.add_parser("bulk", parents=[common], help="worldwide build from Wikidata")
+    bulk.add_argument("action", choices=("fetch", "enrich", "status"))
+    bulk.add_argument("--country", help="Wikidata country QID, e.g. Q215 (Slovenia)")
+    bulk.add_argument(
+        "--all-countries", action="store_true", help="loop every country, largest first"
+    )
+    bulk.add_argument("--page-size", type=int, default=500)
+    bulk.add_argument("--limit", type=int, help="stop after N rows")
+    bulk.add_argument("--endpoint", default="qlever", help="qlever | wdqs | URL")
+    bulk.add_argument("--dry-run", action="store_true", help="build the query without sending it")
 
     verify = sub.add_parser(
         "verify", parents=[common], help="parse an export with Google's protobuf messages"
@@ -434,6 +450,52 @@ def cmd_link(args):
         return 0
 
 
+def cmd_bulk(args):
+    with Store(args.db) as store:
+        ensure_schema(store.conn)
+        if args.action == "fetch":
+            from .bulk import ensure_wd_schema
+            from .wikidata import heritage_query
+
+            ensure_wd_schema(store.conn)
+            if args.dry_run:
+                print(heritage_query(limit=args.page_size, offset=0, country=args.country))
+                return 0
+            client = SparqlClient(endpoint=args.endpoint, user_agent=args.user_agent)
+            if args.all_countries:
+                result = bulk_stage_countries(
+                    store.conn,
+                    client,
+                    page_size=args.page_size,
+                    limit=args.limit,
+                    log=lambda m: _log(args, m),
+                )
+            else:
+                result = bulk_stage(
+                    store.conn,
+                    client,
+                    country=args.country,
+                    page_size=args.page_size,
+                    limit=args.limit,
+                    log=lambda m: _log(args, m),
+                )
+            _log(args, "staged %(rows)d rows in %(requests)d requests" % result)
+            return 0
+
+        if args.action == "enrich":
+            commons = MediaWiki(
+                COMMONS_API, user_agent=args.user_agent, min_interval=args.min_interval
+            )
+            result = bulk_enrich(store.conn, commons, limit=args.limit, log=lambda m: _log(args, m))
+            _log(args, "enriched %(places)d places, %(photos)d photos" % result)
+            return 0
+
+        report = bulk_status(store.conn)
+        for key in ("staged", "pending", "enriched", "failed", "places", "photos"):
+            print("%-10s %s" % (key, report[key]))
+        return 0
+
+
 def cmd_verify(args):
     try:
         result = verify_files(args.file, args.photo_index)
@@ -463,6 +525,7 @@ def main(argv=None):
         "google-match": cmd_google_match,
         "export": cmd_export,
         "near": cmd_near,
+        "bulk": cmd_bulk,
         "link": cmd_link,
         "verify": cmd_verify,
         "stats": cmd_stats,

@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS places (
     match_confidence    REAL,
     match_method        TEXT,
     wikidata_id         TEXT,
+    heritage_designations TEXT,                -- JSON array of designation QIDs
     wikipedia_url       TEXT,
     commons_category    TEXT,
     country_code        TEXT,

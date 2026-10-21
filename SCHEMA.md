@@ -88,6 +88,22 @@ SELECT * FROM v_google_stale;
 The 30-day window is the standard Terms limit, not a magic constant of this
 code — adjust it to your contract.
 
+## Bulk staging
+
+The worldwide build stages before it enriches, so the network-heavy list fetch
+happens once per place and survives interruption:
+
+```sql
+wd_places(qid PK, label, lat, lon, enwiki_title, image_file, commons_category,
+          heritage JSON, country, status, place_id, error, fetched_at)
+```
+
+`status` moves `pending → enriched`. Bulk places are written with
+`id = 'wc:' || qid` because Wikidata is the source, and they carry
+`heritage_designations` (a JSON array of designation QIDs) that crawled places
+leave `NULL`. Rows without coordinates are dropped at parse time, and duplicated
+SPARQL solutions (an item with several `P1435` values) are merged per item.
+
 ## The link chain: wiki place → Google id → photo
 
 One nullable column is not a link you can audit, so `place_links` is the source

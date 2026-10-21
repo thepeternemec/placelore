@@ -175,6 +175,52 @@ Storage is not the constraint:
 2. **~40% of the database is avoidable.** Categories and the duplicated extract/summary pair can go for a production build, landing near 5 KiB/place (~11 GB).
 3. **Discovery is the real cost.** Enrichment is arithmetic: 20 titles per request → 110,544 requests, ~6 h minimum at 0.2 s each; Commons photos add ~44 k. But a 100 m geo grid cannot cover the world — the workable route is a place list from Wikidata/QLever plus the `geo_tags` dump (768 MB) for the Commons side, with the grid reserved for gap-filling.
 
+## All places: the bulk build
+
+Grid crawling covers a city. The world comes from Wikidata: every item with a
+heritage designation (`P1435`) and coordinates (`P625`) — 2,210,883 of them.
+
+Two phases, so the expensive work happens once per place and can be interrupted:
+
+```console
+$ python3 -m wikicrawl bulk fetch  --db world.sqlite --country Q215        # one country
+$ python3 -m wikicrawl bulk fetch  --db world.sqlite --all-countries      # everything
+$ python3 -m wikicrawl bulk status --db world.sqlite
+staged     1500
+pending    1200
+enriched   300
+places     300
+photos     213
+
+$ python3 -m wikicrawl bulk enrich --db world.sqlite --limit 300
+$ python3 -m wikicrawl export --db world.sqlite --format google --out world.json
+```
+
+`fetch` is SPARQL only — no per-place API calls — and writes to a staging table
+`wd_places`. `enrich` resolves each row's `P18` commons image in batches of 50
+and writes clean `places` rows with id `wc:Q…`. Both are resumable: re-running
+skips what is already staged or enriched, so a run that dies at 60% continues.
+
+Measured on 1,500 Slovenian heritage items: **5 requests, 5 seconds** to stage;
+**300 places → 213 photos in 3.5 seconds** to enrich, with 71% of places having a
+usable `P18` photograph.
+
+Full-world estimate at default politeness:
+
+| Phase | Requests | Time |
+|---|---|---|
+| Stage the list (~4,400 pages of 500) | ~4,400 | ~1 h |
+| Resolve `P18` images (~44,000 pages of 50) | ~44,000 | ~2.5 h |
+| Write `places` + `place_photos` | 0 | minutes |
+
+`--limit` makes any of it a sample, and `--dry-run` prints the SPARQL without
+sending it.
+
+Photos come from `P18`, not from Commons categories: one request per fifty
+places instead of one per place. Items without a `P18` still land in the database
+with their category recorded, so a later pass can fill the gap selectively
+instead of paying for every place.
+
 ## Politeness
 
 * 0.2 s between requests by default (`--min-interval`), per client.
@@ -192,7 +238,8 @@ For bulk image downloads use the [Wikimedia dumps](https://dumps.wikimedia.org/)
 * **One coordinate per place**, so large sites collapse to a point.
 * **Infobox parsing is heuristic.** Nested templates and `{{convert}}` are handled; exotic ones are not.
 * **Matching is heuristic.** Famous places link cleanly; dense old towns with near-identical names want `--threshold 0.7` and a look at `google_matches`.
-* **No Wikidata heritage filter yet** (roadmap): "historical" currently means "article has a coordinate", not "is a listed monument".
+* **Grid crawling has no heritage filter** — for that, use `bulk`, where the criterion is `P1435` by definition.
+* **Bulk types are coarse.** With only a label and a Commons category to work from, most non-church heritage items infer as `tourist_attraction`; the designation itself is kept in `heritage_designations` rather than mapped onto Google's vocabulary.
 
 ## Roadmap
 
@@ -202,13 +249,13 @@ For bulk image downloads use the [Wikimedia dumps](https://dumps.wikimedia.org/)
 - [ ] `--wikidata`: attach QID, heritage designation (`P1435`), Commons category per page
 - [ ] `--commons-category`: crawl a monument's curated Commons category instead of geosearch
 - [ ] `--bbox`: rectangular sweeps with automatic cell subdivision
-- [ ] Bulk mode: build the place list from Wikidata/QLever, enrich by title
+- [x] Bulk mode: build the place list from Wikidata/QLever, enrich by `P18`
 - [ ] Parquet export
 
 ## Development
 
 ```console
-$ make test            # 92 tests, no network (6 need the optional Google client)
+$ make test            # 111 tests, no network (6 need the optional Google client)
 $ make verify-google   # parse the fixture with Google's protobufs
 $ make lint            # ruff, if installed
 ```

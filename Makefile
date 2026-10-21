@@ -1,7 +1,16 @@
-.PHONY: test lint demo clean verify-google
+.PHONY: test lint demo clean verify-google bulk-demo
 
 test:
 	python3 -m unittest discover -s tests -t . -v
+
+bulk-demo:
+	rm -f bulk-demo.sqlite bulk-demo.json
+	python3 -m wikicrawl bulk fetch --db bulk-demo.sqlite --country Q215 \
+		--limit 200 --user-agent "wikicrawl-demo/0.3 (demo@example.org)"
+	python3 -m wikicrawl bulk enrich --db bulk-demo.sqlite --limit 100 \
+		--user-agent "wikicrawl-demo/0.3 (demo@example.org)"
+	python3 -m wikicrawl bulk status --db bulk-demo.sqlite
+	python3 -m wikicrawl export --db bulk-demo.sqlite --format google --out bulk-demo.json
 
 verify-google:
 	python3 -m wikicrawl verify --file tests/fixtures/google-payload.json \
