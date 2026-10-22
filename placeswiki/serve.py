@@ -15,7 +15,7 @@ Deliberate differences, all documented in ``docs/API.md``:
 
 Run it:
 
-    python3 -m placelore serve --db world.sqlite --port 8080
+    python3 -m placeswiki serve --db world.sqlite --port 8080
     curl -s localhost:8080/v1/places:searchNearby -d '{"locationRestriction": ...}'
 """
 
@@ -249,7 +249,7 @@ ROUTE_GET = re.compile(r"^/v1/places/([^/]+)$")
 
 def make_handler(index):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "placelore/2.0"
+        server_version = "placeswiki/2.0"
 
         def log_message(self, fmt, *args):  # quieter default logging
             pass

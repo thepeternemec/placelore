@@ -1,4 +1,4 @@
-"""Allow ``python -m placelore``."""
+"""Allow ``python -m placeswiki``."""
 
 from .cli import main
 

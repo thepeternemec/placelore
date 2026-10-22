@@ -11,15 +11,15 @@ import unittest
 import urllib.error
 import urllib.request
 
-from placelore.schema import ensure_schema
-from placelore.serve import (
+from placeswiki.schema import ensure_schema
+from placeswiki.serve import (
     BadRequest,
     PlaceIndex,
     apply_mask,
     make_server,
     parse_field_mask,
 )
-from placelore.slim import build_slim
+from placeswiki.slim import build_slim
 
 
 def make_source(path):
@@ -145,7 +145,7 @@ class TestIndex(unittest.TestCase):
         self.assertEqual(self.index.get("wc:Q1")["displayName"]["text"], "Near Place")
 
     def test_get_unknown_raises(self):
-        from placelore.serve import NotFound
+        from placeswiki.serve import NotFound
 
         with self.assertRaises(NotFound):
             self.index.get("wc:nope")

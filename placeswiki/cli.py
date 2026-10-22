@@ -1,9 +1,9 @@
 """Command line interface.
 
-placelore collect --category "Category:Colosseum" --depth 1 --db rome.sqlite
-placelore collect --lat 41.8902 --lon 12.4922 --radius 400 --db rome.sqlite
-placelore export --db rome.sqlite --out rome.jsonl
-placelore near --db rome.sqlite --lat 41.89 --lon 12.49 --radius-km 1
+placeswiki collect --category "Category:Colosseum" --depth 1 --db rome.sqlite
+placeswiki collect --lat 41.8902 --lon 12.4922 --radius 400 --db rome.sqlite
+placeswiki export --db rome.sqlite --out rome.jsonl
+placeswiki near --db rome.sqlite --lat 41.89 --lon 12.49 --radius-km 1
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from .crawl import crawl_category, crawl_links, geosearch
 from .google import PlacesClient, match_places
 from .images import COMMONS_API, fetch_imageinfo
 from .links import (
+    LinkError,
     check_integrity,
     export_links,
     import_links,
@@ -53,10 +54,10 @@ from .wikidata import SparqlClient
 
 def _build_parser():
     parser = argparse.ArgumentParser(
-        prog="placelore",
+        prog="placeswiki",
         description="Open historical places from Wikimedia, served locally.",
     )
-    parser.add_argument("--version", action="version", version="placelore " + __version__)
+    parser.add_argument("--version", action="version", version="placeswiki " + __version__)
     sub = parser.add_subparsers(dest="command", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
@@ -194,7 +195,7 @@ def _build_parser():
         "publish", parents=[common], help="write a redistributable open-data bundle"
     )
     publish.add_argument("--out", required=True, help="output directory")
-    publish.add_argument("--name", default="placelore-places")
+    publish.add_argument("--name", default="placeswiki-places")
     publish.add_argument("--title")
     publish.add_argument("--version")
 
@@ -244,6 +245,8 @@ def _collect_titles(args, api):
     if args.seed:
         for title in crawl_links(api, args.seed, depth=args.depth):
             yield title
+    if (args.lat is None) != (args.lon is None):
+        raise SystemExit("--lat and --lon must be given together")
     if args.lat is not None and args.lon is not None:
         result = geosearch(api, args.lat, args.lon, radius=args.radius, cell=args.cell)
         _log(
@@ -457,7 +460,10 @@ def cmd_link(args):
         if args.action == "remove":
             if not args.place or not args.google_id:
                 raise SystemExit("--place and --google-id are required")
-            remove_link(store.conn, args.place, validate_google_id(args.google_id))
+            try:
+                remove_link(store.conn, args.place, validate_google_id(args.google_id))
+            except LinkError as exc:
+                raise SystemExit(str(exc)) from exc
             store.conn.commit()
             _log(args, "removed %s -> %s" % (args.place, args.google_id))
             return 0
@@ -465,7 +471,10 @@ def cmd_link(args):
         if args.action == "promote":
             if not args.place or not args.google_id:
                 raise SystemExit("--place and --google-id are required")
-            set_primary(store.conn, args.place, validate_google_id(args.google_id))
+            try:
+                set_primary(store.conn, args.place, validate_google_id(args.google_id))
+            except LinkError as exc:
+                raise SystemExit(str(exc)) from exc
             store.conn.commit()
             _log(args, "promoted %s -> %s" % (args.place, args.google_id))
             return 0
@@ -495,7 +504,10 @@ def cmd_bulk(args):
             if args.dry_run:
                 print(heritage_query(limit=args.page_size, offset=0, country=args.country))
                 return 0
-            client = SparqlClient(endpoint=args.endpoint, user_agent=args.user_agent)
+            try:
+                client = SparqlClient(endpoint=args.endpoint, user_agent=args.user_agent)
+            except ValueError as exc:
+                raise SystemExit(str(exc)) from exc
             if args.all_countries:
                 result = bulk_stage_countries(
                     store.conn,
@@ -544,9 +556,16 @@ def cmd_slim(args):
 
 
 def cmd_serve(args):
-    server = make_server(
-        args.db, host=args.host, port=args.port, prefer_google_ids=args.prefer_google_ids
-    )
+    if not os.path.exists(args.db):
+        raise SystemExit(
+            "no database at %s — build one with 'placeswiki bulk' or 'placeswiki collect'" % args.db
+        )
+    try:
+        server = make_server(
+            args.db, host=args.host, port=args.port, prefer_google_ids=args.prefer_google_ids
+        )
+    except Exception as exc:  # unreadable file, missing tables, port in use
+        raise SystemExit("cannot serve %s: %s" % (args.db, exc)) from exc
     stats = server.index.stats()
     print(
         "serving %d places, %d photos on http://%s:%d"

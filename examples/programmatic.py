@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Use placelore as a library: no CLI, no database required.
+"""Use placeswiki as a library: no CLI, no database required.
 
     python3 examples/programmatic.py
 
@@ -12,12 +12,12 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from placelore import MediaWiki, Store, fetch_pages, geosearch
-from placelore.images import fetch_imageinfo
+from placeswiki import MediaWiki, Store, fetch_pages, geosearch
+from placeswiki.images import fetch_imageinfo
 
 WIKIPEDIA = "https://en.wikipedia.org/w/api.php"
 COMMONS = "https://commons.wikimedia.org/w/api.php"
-UA = "placelore-example/0.1 (https://github.com/; example@example.org)"
+UA = "placeswiki-example/0.1 (https://github.com/; example@example.org)"
 
 
 def main():

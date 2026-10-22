@@ -6,8 +6,8 @@ import json
 import sqlite3
 import unittest
 
-from placelore.contribute import collect_gaps, render_json, render_markdown
-from placelore.schema import ensure_schema
+from placeswiki.contribute import collect_gaps, render_json, render_markdown
+from placeswiki.schema import ensure_schema
 
 
 class Base(unittest.TestCase):

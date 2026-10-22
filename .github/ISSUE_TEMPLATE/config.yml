@@ -4,5 +4,5 @@ contact_links:
     url: https://www.wikidata.org
     about: Fix it upstream — the next crawl inherits the fix. See CONTRIBUTING.md.
   - name: Security vulnerability
-    url: https://github.com/thepeternemec/placelore/security/advisories/new
+    url: https://github.com/thepeternemec/placeswiki/security/advisories/new
     about: Private report, not a public issue. See SECURITY.md.

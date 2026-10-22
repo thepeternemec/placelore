@@ -23,7 +23,7 @@ jobs:
       - name: Unit tests (offline)
         run: python -m unittest discover -s tests -t . -v
       - name: Byte-compile
-        run: python -m compileall -q placelore
+        run: python -m compileall -q placeswiki
 
   google-compat:
     # The claim is "Google's parser accepts this". Here Google's parser proves it.
@@ -39,7 +39,7 @@ jobs:
           python -m pip install google-maps-places
       - name: Parse fixture with google.maps.places_v1
         run: |
-          python -m placelore verify \
+          python -m placeswiki verify \
             --file tests/fixtures/google-payload.json \
             --photo-index tests/fixtures/google-photo-index.json
       - name: Verify tests (not skipped here)

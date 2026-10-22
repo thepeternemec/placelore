@@ -8,9 +8,9 @@ import unittest
 import urllib.error
 from email.message import Message
 
-from placelore.bulk import enrich, ensure_wd_schema, pending, stage, status
-from placelore.schema import ensure_schema
-from placelore.wikidata import (
+from placeswiki.bulk import enrich, ensure_wd_schema, pending, stage, status
+from placeswiki.schema import ensure_schema
+from placeswiki.wikidata import (
     SparqlClient,
     SparqlError,
     commons_file,
@@ -189,14 +189,14 @@ class TestEnrich(unittest.TestCase):
         stage(self.conn, FakeSparql([list(SAMPLE_ROWS)]))
 
     def _patch_images(self, records):
-        import placelore.bulk as bulk
+        import placeswiki.bulk as bulk
 
         self._original = bulk.fetch_imageinfo
         bulk.fetch_imageinfo = lambda commons, files: iter(records)
 
     def tearDown(self):
         if hasattr(self, "_original"):
-            import placelore.bulk as bulk
+            import placeswiki.bulk as bulk
 
             bulk.fetch_imageinfo = self._original
         self.conn.close()

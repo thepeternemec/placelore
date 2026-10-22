@@ -31,7 +31,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX schema: <http://schema.org/>
 PREFIX geof: <http://www.opengis.net/def/function/geosparql/>"""
 
-DEFAULT_UA = "placelore/0.3 (bulk; contact: you@example.org)"
+DEFAULT_UA = "placeswiki/0.3 (bulk; contact: you@example.org)"
 
 
 class SparqlError(RuntimeError):

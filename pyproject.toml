@@ -3,13 +3,13 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "placelore"
-version = "2.0.0"
+name = "placeswiki"
+version = "3.0.0"
 description = "Open historical places and landmarks from Wikimedia, served in the Google Places protocol"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "placelore contributors" }]
+authors = [{ name = "placeswiki contributors" }]
 keywords = ["open data", "cultural heritage", "historical places", "wikidata", "wikimedia commons", "google places", "geospatial"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -23,14 +23,14 @@ dependencies = []
 dev = ["ruff>=0.5"]
 
 [project.scripts]
-placelore = "placelore.cli:main"
+placeswiki = "placeswiki.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/thepeternemec/placelore"
-Issues = "https://github.com/thepeternemec/placelore/issues"
+Homepage = "https://github.com/thepeternemec/placeswiki"
+Issues = "https://github.com/thepeternemec/placeswiki/issues"
 
 [tool.setuptools]
-packages = ["placelore"]
+packages = ["placeswiki"]
 
 [tool.ruff]
 line-length = 100

@@ -1,13 +1,13 @@
 <div align="center">
 
-# placelore
+# placeswiki
 
-**Open historical places, served the way Google serves them.**
+**Google Places, from the wiki.**
 
 Coordinates, descriptions and photographs from Wikimedia —<br>
 keyed to Google place IDs, in one SQLite file you own.
 
-[CI](https://github.com/thepeternemec/placelore/actions/workflows/ci.yml) ·
+[CI](https://github.com/thepeternemec/placeswiki/actions/workflows/ci.yml) ·
 [API](docs/API.md) ·
 [Schema](SCHEMA.md) ·
 [Data licence](DATA-LICENSE.md)
@@ -20,7 +20,7 @@ A place should not cost money to display. Google's Places API bills per request
 and forbids keeping what you fetched. Wikimedia already hosts the facts and the
 photographs under licences that allow redistribution.
 
-placelore builds that database, and answers Google's endpoints from it.
+placeswiki builds that database, and answers Google's endpoints from it.
 
 ```js
 const BASE = "http://127.0.0.1:8080";   // was https://places.googleapis.com
@@ -32,10 +32,10 @@ or the twenty-result cap you already code around.
 ## Try it
 
 ```console
-$ pip install placelore
-$ placelore bulk fetch  --db world.sqlite --country Q215
-$ placelore bulk enrich --db world.sqlite --limit 500
-$ placelore serve       --db world.sqlite --port 8080
+$ pip install placeswiki
+$ placeswiki bulk fetch  --db world.sqlite --country Q215
+$ placeswiki bulk enrich --db world.sqlite --limit 500
+$ placeswiki serve       --db world.sqlite --port 8080
 ```
 
 No API key. No account. Python 3.9+, standard library only.
@@ -74,7 +74,7 @@ commercial, and Wikimedia does not track them. The scope is heritage, monuments
 and landmarks — narrow on purpose, so what is here is true.
 
 Coverage follows volunteer effort and is uneven by country. The tool never writes
-upstream; `placelore gaps` turns what is missing into a work list for human
+upstream; `placeswiki gaps` turns what is missing into a work list for human
 editors instead.
 
 ## Docs
@@ -90,4 +90,4 @@ editors instead.
 Code MIT. Text CC BY-SA 4.0 from Wikipedia. Photographs per file, attributed.
 Google place IDs under Google's terms. Fields this project generates are CC0.
 
-Content by Wikimedia contributors. Identifiers by Google. Schema by placelore.
+Content by Wikimedia contributors. Identifiers by Google. Schema by placeswiki.

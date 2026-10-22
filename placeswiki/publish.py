@@ -132,7 +132,7 @@ PLACE_FIELDS = [
 ]
 
 
-def publish(db_path, out_dir, name="placelore-places", title=None, version=None):
+def publish(db_path, out_dir, name="placeswiki-places", title=None, version=None):
     """Write a complete, verifiable bundle. Returns its manifest."""
     os.makedirs(out_dir, exist_ok=True)
     with Store(db_path) as store:

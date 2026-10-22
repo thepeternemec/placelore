@@ -3,6 +3,27 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] — 2026-10-22
+
+### Changed
+
+- **Renamed from `placelore` to `placeswiki`.** Module, console script and
+  repository. Version 3.0.0; GitHub redirects the previous URL.
+- Tagline is now the thing people search for: *Google Places, from the wiki.*
+
+### Fixed
+
+Deep testing against live APIs found five defects, all fixed with regression
+tests:
+
+- **The link crawler only ever returned its seed.** `prop=links` nests results as
+  `query.pages[].links[]`, which the generic paginator does not flatten; crawling
+  by `--seed` fetched 1 page instead of 10.
+- `link remove` and `link promote` raised a traceback instead of a message.
+- `collect --lat` without `--lon` silently did nothing.
+- `bulk --endpoint` with an unknown endpoint raised a traceback.
+- `serve` with a missing database raised a traceback.
+
 ## [2.0.0] — 2026-10-22
 
 ### Changed

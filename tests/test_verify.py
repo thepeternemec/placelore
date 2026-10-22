@@ -11,7 +11,7 @@ import json
 import os
 import unittest
 
-from placelore.verify import format_report, verify_payload
+from placeswiki.verify import format_report, verify_payload
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 

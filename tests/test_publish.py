@@ -8,8 +8,8 @@ import sqlite3
 import tempfile
 import unittest
 
-from placelore.publish import attribution_markdown, publish, sha256
-from placelore.schema import ensure_schema
+from placeswiki.publish import attribution_markdown, publish, sha256
+from placeswiki.schema import ensure_schema
 
 
 class TestPublish(unittest.TestCase):

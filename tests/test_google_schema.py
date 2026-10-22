@@ -15,7 +15,7 @@ import sqlite3
 import tempfile
 import unittest
 
-from placelore.google import (
+from placeswiki.google import (
     PlacesClient,
     PlacesError,
     best_candidate,
@@ -24,8 +24,8 @@ from placelore.google import (
     name_similarity,
     score_pair,
 )
-from placelore.normalize import clean_author, normalize, place_id_for, wiki_key
-from placelore.schema import (
+from placeswiki.normalize import clean_author, normalize, place_id_for, wiki_key
+from placeswiki.schema import (
     ensure_schema,
     infer_types,
     photo_index,
@@ -34,7 +34,7 @@ from placelore.schema import (
     places_response,
     slugify,
 )
-from placelore.store import Store
+from placeswiki.store import Store
 
 # Places API (New) — GoogleMapsPlacesV1Place
 ALLOWED_PLACE_KEYS = {
@@ -154,7 +154,7 @@ class TestGoogleVocabulary(unittest.TestCase):
         cls.all_types = cls.table_a | cls.table_b
 
     def test_vocabulary_is_a_subset_of_googles_list(self):
-        from placelore.schema import GOOGLE_TYPES
+        from placeswiki.schema import GOOGLE_TYPES
 
         self.assertLessEqual(GOOGLE_TYPES, self.all_types)
 
@@ -170,7 +170,7 @@ class TestGoogleVocabulary(unittest.TestCase):
                 self.assertIn(value, self.all_types)
 
     def test_nearby_filter_drops_table_b(self):
-        from placelore.schema import nearby_types
+        from placeswiki.schema import nearby_types
 
         self.assertIn("bridge", self.table_b)
         self.assertEqual(nearby_types(["bridge", "museum"]), ["museum"])
@@ -208,7 +208,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(infer_types({"title": "Nowhere"}), ["tourist_attraction"])
 
     def test_output_stays_in_google_vocabulary(self):
-        from placelore.schema import GOOGLE_TYPES
+        from placeswiki.schema import GOOGLE_TYPES
 
         for vocab in (
             ["Category:Churches in Italy"],

@@ -9,12 +9,12 @@ import unittest
 import urllib.error
 from email.message import Message
 
-from placelore.api import APIError, MediaWiki
-from placelore.crawl import GeoResult, crawl_category, crawl_links, geosearch, grid_centers
-from placelore.extract import parse_coordinate_template, parse_infobox, strip_markup, summary
-from placelore.images import fetch_imageinfo
-from placelore.pages import fetch_pages
-from placelore.store import Store
+from placeswiki.api import APIError, MediaWiki
+from placeswiki.crawl import GeoResult, crawl_category, crawl_links, geosearch, grid_centers
+from placeswiki.extract import parse_coordinate_template, parse_infobox, strip_markup, summary
+from placeswiki.images import fetch_imageinfo
+from placeswiki.pages import fetch_pages
+from placeswiki.store import Store
 
 
 class ScriptedAPI(MediaWiki):
@@ -144,9 +144,13 @@ class FakeCatalogAPI:
             for title in self.links.get(params["titles"], []):
                 yield {"title": title}
 
-    def get(self, **params):
-        self.geo_calls.append(dict(params))
-        return {"query": {"geosearch": list(self.geo)}}
+    def get(self, params=None, **kwargs):
+        params = dict(params or {})
+        params.update(kwargs)
+        self.geo_calls.append(params)
+        if params.get("list") == "geosearch":
+            return {"query": {"geosearch": list(self.geo)}}
+        return {"query": {"pages": [{"title": "Seed", "links": []}]}}
 
 
 class TestCrawlStrategies(unittest.TestCase):
@@ -173,8 +177,41 @@ class TestCrawlStrategies(unittest.TestCase):
         )
         self.assertEqual(list(crawl_category(api, ["A"], depth=9)), ["Article"])
 
+    def test_crawl_links_reads_nested_link_lists(self):
+        """Real ``prop=links`` responses nest links inside query.pages[],
+        which the generic paginate helper does not flatten."""
+
+        class NestedAPI:
+            def __init__(self):
+                self.calls = 0
+
+            def get(self, params=None, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    return {
+                        "query": {"pages": [{"title": "Seed", "links": [{"title": "A"}, {"title": "B"}]}]},
+                        "continue": {"plcontinue": "next"},
+                    }
+                return {"query": {"pages": [{"title": "Seed", "links": [{"title": "C"}]}]}}
+
+        titles = list(crawl_links(NestedAPI(), ["Seed"], depth=1))
+        self.assertEqual(sorted(titles), ["A", "B", "C", "Seed"])
+
     def test_crawl_links_stops_at_depth(self):
-        api = FakeCatalogAPI(links={"Seed": ["A", "B"], "A": ["C"], "B": [], "C": []})
+        class LinkAPI:
+            def __init__(self, links):
+                self.links = links
+
+            def get(self, params=None, **kwargs):
+                params = dict(params or {})
+                params.update(kwargs)
+                title = params.get("titles")
+                return {"query": {"pages": [{
+                    "title": title,
+                    "links": [{"title": t} for t in self.links.get(title, [])],
+                }]}}
+
+        api = LinkAPI({"Seed": ["A", "B"], "A": ["C"], "B": [], "C": []})
         self.assertEqual(sorted(crawl_links(api, ["Seed"], depth=1)), ["A", "B", "Seed"])
         self.assertEqual(sorted(crawl_links(api, ["Seed"], depth=2)), ["A", "B", "C", "Seed"])
 

@@ -52,6 +52,36 @@ def crawl_category(api, roots, depth=1, namespace=0):
                 yield title
 
 
+def page_links(api, title, namespace=0):
+    """Yield internal link titles for one page.
+
+    ``prop=links`` nests results as ``query.pages[].links[]``, which the generic
+    ``paginate`` helper cannot flatten — it yields the page objects, not the
+    links. That meant the link crawler only ever returned its seed, so this
+    walks the nested structure explicitly.
+    """
+    base = {
+        "action": "query",
+        "prop": "links",
+        "titles": title,
+        "plnamespace": namespace,
+        "pllimit": "max",
+    }
+    pending = dict(base)
+    while True:
+        payload = api.get(pending)
+        for page in payload.get("query", {}).get("pages", []):
+            for link in page.get("links", []):
+                target = link.get("title", "")
+                if target:
+                    yield target
+        cont = payload.get("continue")
+        if not cont:
+            return
+        pending = dict(base)
+        pending.update(cont)
+
+
 def crawl_links(api, seeds, depth=2, namespace=0):
     """Breadth-first walk of internal links from seed articles."""
     queue = deque((seed, 0) for seed in seeds)
@@ -62,14 +92,8 @@ def crawl_links(api, seeds, depth=2, namespace=0):
         title, level = queue.popleft()
         if level >= depth:
             continue
-        for link in api.paginate(
-            prop="links",
-            titles=title,
-            plnamespace=namespace,
-            pllimit="max",
-        ):
-            target = link.get("title", "")
-            if target and target not in seen:
+        for target in page_links(api, title, namespace=namespace):
+            if target not in seen:
                 seen.add(target)
                 queue.append((target, level + 1))
                 yield target
