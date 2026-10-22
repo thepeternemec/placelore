@@ -54,7 +54,7 @@ from .wikidata import SparqlClient
 def _build_parser():
     parser = argparse.ArgumentParser(
         prog="placelore",
-        description="Polite crawler for Wikipedia articles, coordinates and lead images.",
+        description="Open historical places from Wikimedia, served locally.",
     )
     parser.add_argument("--version", action="version", version="placelore " + __version__)
     sub = parser.add_subparsers(dest="command", required=True)
