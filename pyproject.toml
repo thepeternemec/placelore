@@ -3,14 +3,14 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "wikicrawl"
-version = "1.1.0"
-description = "Polite, resumable crawler for Wikipedia places, coordinates and Commons photos"
+name = "placelore"
+version = "2.0.0"
+description = "Open historical places and landmarks from Wikimedia, served in the Google Places protocol"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "wikicrawl contributors" }]
-keywords = ["wikipedia", "wikidata", "commons", "crawler", "geodata", "heritage"]
+authors = [{ name = "placelore contributors" }]
+keywords = ["open data", "cultural heritage", "historical places", "wikidata", "wikimedia commons", "google places", "geospatial"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -23,14 +23,14 @@ dependencies = []
 dev = ["ruff>=0.5"]
 
 [project.scripts]
-wikicrawl = "wikicrawl.cli:main"
+placelore = "placelore.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/thepeternemec/wikipedia-crawl"
-Issues = "https://github.com/thepeternemec/wikipedia-crawl/issues"
+Homepage = "https://github.com/thepeternemec/placelore"
+Issues = "https://github.com/thepeternemec/placelore/issues"
 
 [tool.setuptools]
-packages = ["wikicrawl"]
+packages = ["placelore"]
 
 [tool.ruff]
 line-length = 100

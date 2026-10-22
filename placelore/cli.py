@@ -1,9 +1,9 @@
 """Command line interface.
 
-wikicrawl collect --category "Category:Colosseum" --depth 1 --db rome.sqlite
-wikicrawl collect --lat 41.8902 --lon 12.4922 --radius 400 --db rome.sqlite
-wikicrawl export --db rome.sqlite --out rome.jsonl
-wikicrawl near --db rome.sqlite --lat 41.89 --lon 12.49 --radius-km 1
+placelore collect --category "Category:Colosseum" --depth 1 --db rome.sqlite
+placelore collect --lat 41.8902 --lon 12.4922 --radius 400 --db rome.sqlite
+placelore export --db rome.sqlite --out rome.jsonl
+placelore near --db rome.sqlite --lat 41.89 --lon 12.49 --radius-km 1
 """
 
 from __future__ import annotations
@@ -53,10 +53,10 @@ from .wikidata import SparqlClient
 
 def _build_parser():
     parser = argparse.ArgumentParser(
-        prog="wikicrawl",
+        prog="placelore",
         description="Polite crawler for Wikipedia articles, coordinates and lead images.",
     )
-    parser.add_argument("--version", action="version", version="wikicrawl " + __version__)
+    parser.add_argument("--version", action="version", version="placelore " + __version__)
     sub = parser.add_subparsers(dest="command", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
@@ -194,7 +194,7 @@ def _build_parser():
         "publish", parents=[common], help="write a redistributable open-data bundle"
     )
     publish.add_argument("--out", required=True, help="output directory")
-    publish.add_argument("--name", default="wikicrawl-places")
+    publish.add_argument("--name", default="placelore-places")
     publish.add_argument("--title")
     publish.add_argument("--version")
 

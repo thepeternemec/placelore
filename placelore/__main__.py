@@ -1,4 +1,4 @@
-"""Allow ``python -m wikicrawl``."""
+"""Allow ``python -m placelore``."""
 
 from .cli import main
 

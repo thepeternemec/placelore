@@ -15,7 +15,7 @@ import sqlite3
 import tempfile
 import unittest
 
-from wikicrawl.google import (
+from placelore.google import (
     PlacesClient,
     PlacesError,
     best_candidate,
@@ -24,8 +24,8 @@ from wikicrawl.google import (
     name_similarity,
     score_pair,
 )
-from wikicrawl.normalize import clean_author, normalize, place_id_for, wiki_key
-from wikicrawl.schema import (
+from placelore.normalize import clean_author, normalize, place_id_for, wiki_key
+from placelore.schema import (
     ensure_schema,
     infer_types,
     photo_index,
@@ -34,7 +34,7 @@ from wikicrawl.schema import (
     places_response,
     slugify,
 )
-from wikicrawl.store import Store
+from placelore.store import Store
 
 # Places API (New) — GoogleMapsPlacesV1Place
 ALLOWED_PLACE_KEYS = {
@@ -154,7 +154,7 @@ class TestGoogleVocabulary(unittest.TestCase):
         cls.all_types = cls.table_a | cls.table_b
 
     def test_vocabulary_is_a_subset_of_googles_list(self):
-        from wikicrawl.schema import GOOGLE_TYPES
+        from placelore.schema import GOOGLE_TYPES
 
         self.assertLessEqual(GOOGLE_TYPES, self.all_types)
 
@@ -170,7 +170,7 @@ class TestGoogleVocabulary(unittest.TestCase):
                 self.assertIn(value, self.all_types)
 
     def test_nearby_filter_drops_table_b(self):
-        from wikicrawl.schema import nearby_types
+        from placelore.schema import nearby_types
 
         self.assertIn("bridge", self.table_b)
         self.assertEqual(nearby_types(["bridge", "museum"]), ["museum"])
@@ -208,7 +208,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(infer_types({"title": "Nowhere"}), ["tourist_attraction"])
 
     def test_output_stays_in_google_vocabulary(self):
-        from wikicrawl.schema import GOOGLE_TYPES
+        from placelore.schema import GOOGLE_TYPES
 
         for vocab in (
             ["Category:Churches in Italy"],

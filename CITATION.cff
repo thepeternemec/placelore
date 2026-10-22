@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this dataset or code, cite it as below."
-title: "wikicrawl: open historical places dataset"
+title: "placelore: open historical places, served locally"
 abstract: >-
   An open dataset of historical places and landmarks: coordinates, descriptions
   and Wikimedia Commons photographs, with stable identifiers and an optional
@@ -12,10 +12,10 @@ authors:
     family-names: Nemec
     alias: thepeternemec
     website: "https://github.com/thepeternemec"
-repository-code: "https://github.com/thepeternemec/wikipedia-crawl"
-url: "https://github.com/thepeternemec/wikipedia-crawl"
+repository-code: "https://github.com/thepeternemec/placelore"
+url: "https://github.com/thepeternemec/placelore"
 license: MIT
-version: 0.3.0
+version: 2.0.0
 date-released: 2026-10-21
 keywords:
   - open data

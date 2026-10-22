@@ -9,12 +9,12 @@ import unittest
 import urllib.error
 from email.message import Message
 
-from wikicrawl.api import APIError, MediaWiki
-from wikicrawl.crawl import GeoResult, crawl_category, crawl_links, geosearch, grid_centers
-from wikicrawl.extract import parse_coordinate_template, parse_infobox, strip_markup, summary
-from wikicrawl.images import fetch_imageinfo
-from wikicrawl.pages import fetch_pages
-from wikicrawl.store import Store
+from placelore.api import APIError, MediaWiki
+from placelore.crawl import GeoResult, crawl_category, crawl_links, geosearch, grid_centers
+from placelore.extract import parse_coordinate_template, parse_infobox, strip_markup, summary
+from placelore.images import fetch_imageinfo
+from placelore.pages import fetch_pages
+from placelore.store import Store
 
 
 class ScriptedAPI(MediaWiki):

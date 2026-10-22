@@ -30,7 +30,7 @@ a product decision, not a feature request: open an issue before writing code.
 ## Data corrections belong upstream
 
 A wrong coordinate is wrong in Wikidata; a missing author is missing on Commons.
-Fix it there and the next crawl inherits it. `wikicrawl gaps --db … --out gaps.md`
+Fix it there and the next crawl inherits it. `placelore gaps --db … --out gaps.md`
 lists exactly what is missing, with links:
 
 | Gap | Fix |

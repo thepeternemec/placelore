@@ -1,6 +1,6 @@
-"""wikicrawl - a small, polite crawler for Wikipedia places and photos."""
+"""placelore - open historical places, keyed to Google ids, served locally."""
 
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 from .api import APIError, MediaWiki
 from .crawl import GeoResult, crawl_category, crawl_links, geosearch

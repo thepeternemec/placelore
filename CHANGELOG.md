@@ -3,6 +3,18 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] — 2026-10-22
+
+### Changed
+
+- **Renamed from `wikicrawl` to `placelore`.** The old name described the
+  mechanism; this one describes the thing. Breaking for anyone who pinned the
+  package: the module, the console script and the repository are all
+  `placelore` now. GitHub redirects the old repository URL; old releases stay
+  available under the previous name and version.
+- README rewritten: what it answers, what it holds, what it is not. Fewer tables,
+  no feature inventory.
+
 ## [Unreleased]
 
 - `overture` importer for breadth (3.17 M Cultural and Historic features)

@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-DEFAULT_UA = "wikicrawl/0.1 (https://github.com/; contact: you@example.org) python-urllib"
+DEFAULT_UA = "placelore/0.1 (https://github.com/; contact: you@example.org) python-urllib"
 
 
 class APIError(RuntimeError):

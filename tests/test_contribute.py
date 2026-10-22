@@ -6,8 +6,8 @@ import json
 import sqlite3
 import unittest
 
-from wikicrawl.contribute import collect_gaps, render_json, render_markdown
-from wikicrawl.schema import ensure_schema
+from placelore.contribute import collect_gaps, render_json, render_markdown
+from placelore.schema import ensure_schema
 
 
 class Base(unittest.TestCase):

@@ -76,8 +76,8 @@ which makes partial coverage usable.
 ## Running
 
 ```console
-$ python3 -m wikicrawl slim  --db world.sqlite --out serve.sqlite
-$ python3 -m wikicrawl serve --db serve.sqlite --port 8080
+$ python3 -m placelore slim  --db world.sqlite --out serve.sqlite
+$ python3 -m placelore serve --db serve.sqlite --port 8080
 ```
 
 Read-only SQLite behind a threaded stdlib server, bound to `127.0.0.1`. No auth,

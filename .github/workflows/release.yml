@@ -22,7 +22,7 @@ jobs:
       - name: Test the built wheel
         run: |
           python -m pip install dist/*.whl
-          cd /tmp && python -c "import wikicrawl; print(wikicrawl.__version__)"
+          cd /tmp && python -c "import placelore; print(placelore.__version__)"
       - name: Publish release
         uses: softprops/action-gh-release@v3
         with:

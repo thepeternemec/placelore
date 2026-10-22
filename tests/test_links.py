@@ -6,7 +6,7 @@ import json
 import sqlite3
 import unittest
 
-from wikicrawl.links import (
+from placelore.links import (
     LinkError,
     add_link,
     check_integrity,
@@ -17,7 +17,7 @@ from wikicrawl.links import (
     set_primary,
     validate_google_id,
 )
-from wikicrawl.schema import ensure_schema
+from placelore.schema import ensure_schema
 
 GOOGLE_A = "ChIJrTLr-GyuEmsRBfy61i59si0"
 GOOGLE_B = "ChIJSecondCandidateForSamePlace000"

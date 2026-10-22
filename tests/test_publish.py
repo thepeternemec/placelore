@@ -8,8 +8,8 @@ import sqlite3
 import tempfile
 import unittest
 
-from wikicrawl.publish import attribution_markdown, publish, sha256
-from wikicrawl.schema import ensure_schema
+from placelore.publish import attribution_markdown, publish, sha256
+from placelore.schema import ensure_schema
 
 
 class TestPublish(unittest.TestCase):

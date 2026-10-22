@@ -12,10 +12,10 @@ body:
     id: command
     attributes:
       label: Command and version
-      description: The exact command, plus `python3 -m wikicrawl --version`.
+      description: The exact command, plus `python3 -m placelore --version`.
       placeholder: |
-        python3 -m wikicrawl collect --lat 41.89 --lon 12.49 --radius 400 --cell 100 --db rome.sqlite
-        wikicrawl 0.3.0
+        python3 -m placelore collect --lat 41.89 --lon 12.49 --radius 400 --cell 100 --db rome.sqlite
+        placelore 0.3.0
     validations:
       required: true
   - type: textarea

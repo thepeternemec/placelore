@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Use wikicrawl as a library: no CLI, no database required.
+"""Use placelore as a library: no CLI, no database required.
 
     python3 examples/programmatic.py
 
@@ -12,12 +12,12 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from wikicrawl import MediaWiki, Store, fetch_pages, geosearch
-from wikicrawl.images import fetch_imageinfo
+from placelore import MediaWiki, Store, fetch_pages, geosearch
+from placelore.images import fetch_imageinfo
 
 WIKIPEDIA = "https://en.wikipedia.org/w/api.php"
 COMMONS = "https://commons.wikimedia.org/w/api.php"
-UA = "wikicrawl-example/0.1 (https://github.com/; example@example.org)"
+UA = "placelore-example/0.1 (https://github.com/; example@example.org)"
 
 
 def main():
