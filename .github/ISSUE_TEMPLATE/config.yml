@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Data correction (wrong coordinate, missing photo)
     url: https://www.wikidata.org
-    about: Fix it upstream — the next crawl inherits the fix. See GOVERNANCE.md.
+    about: Fix it upstream — the next crawl inherits the fix. See CONTRIBUTING.md.
   - name: Security vulnerability
     url: https://github.com/thepeternemec/wikipedia-crawl/security/advisories/new
     about: Private report, not a public issue. See SECURITY.md.

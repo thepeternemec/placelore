@@ -135,8 +135,8 @@ def render_markdown(gaps, source="database", generated=None):
         "in the crawler: these are gaps in Wikidata, Wikipedia or Commons, and "
         "they are fixed by editing upstream." % source,
         "",
-        "See [CONTRIBUTING-TO-WIKIMEDIA.md](CONTRIBUTING-TO-WIKIMEDIA.md) for how "
-        "to make each edit. Your fix reaches every future crawl.",
+        "See [CONTRIBUTING.md](CONTRIBUTING.md) for how to make each edit. "
+        "Your fix reaches every future crawl.",
     ]
     if generated:
         lines += ["", "_Generated %s._" % generated]

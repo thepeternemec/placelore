@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Scope is historical places and landmarks only (docs/SCOPE.md). Proposals
-        that widen it need an explicit scope decision — see GOVERNANCE.md.
+        Scope is historical places and landmarks only (CONTRIBUTING.md). Proposals
+        that widen it need an explicit scope decision — see CONTRIBUTING.md.
   - type: textarea
     id: problem
     attributes:

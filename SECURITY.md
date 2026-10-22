@@ -1,41 +1,24 @@
-# Security policy
+# Security
 
-## Supported versions
+## Reporting
 
-| Version | Supported |
-|---|---|
-| 0.3.x | yes |
-| < 0.3 | no |
+Use **Security → Report a vulnerability**. Do not open a public issue. Response is
+best effort from one maintainer — expect days, not hours. No bug bounty.
 
-## Reporting a vulnerability
+## Counts
 
-Use GitHub's private reporting: **Security → Report a vulnerability** on this
-repository. Do not open a public issue.
+- Code execution, path traversal outside `--out`, or escape from the SQLite file.
+- Injection through a title, category or SPARQL result into SQL or a shell.
+- Leaking a key: `GOOGLE_MAPS_API_KEY` or `--api-key`.
 
-Include what you did, what happened, and the smallest input that reproduces it.
-Response is best effort from a single maintainer — expect days, not hours. There
-is no bug bounty.
+## Does not count
 
-## What counts
+Rate limits, `429` or `maxlag` responses — that is the API working as designed.
+Wrong coordinates, missing photos or bad matches are data issues; fix them
+upstream (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
-- Anything that lets a crafted input execute code, escape the SQLite file, or
-  overwrite files outside `--out`.
-- Injection through a title, category name, or SPARQL result into SQL or a shell.
-- Leaking an API key: `GOOGLE_MAPS_API_KEY`, or a key passed with `--api-key`.
+## Secrets
 
-## What does not
-
-- Rate limiting, `429`, or `maxlag` responses. That is the API working as
-  designed; see [CONTRIBUTING.md](CONTRIBUTING.md) before reporting it as a bug.
-- Wrong coordinates, missing photos, or bad matches. Those are data issues —
-  report them upstream (see [GOVERNANCE.md](GOVERNANCE.md)).
-- Anything requiring a hostile local user who can already edit the database.
-
-## Handling of secrets
-
-- The crawler needs **no credentials**. Wikimedia endpoints are anonymous.
-- Only `google-match` needs a key, read from `GOOGLE_MAPS_API_KEY` or
-  `--api-key`, and never written to the database, the bundle, or logs.
-- `--dry-run` is the intended way to test matching without a key at all.
-- Committed secrets are rotated first, then removed; the history is rewritten
-  only if the key was live.
+The crawler needs no credentials. Only `google-match` needs a key, read from
+`GOOGLE_MAPS_API_KEY` or `--api-key`, never written to the database, the bundle or
+logs. `--dry-run` tests matching without a key at all.

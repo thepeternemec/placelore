@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Before filing: wrong coordinates, missing photos and bad matches are
-        usually upstream data issues — see GOVERNANCE.md. Security issues go to
+        usually upstream data issues — see CONTRIBUTING.md. Security issues go to
         Security → Report a vulnerability, not here.
   - type: textarea
     id: command
